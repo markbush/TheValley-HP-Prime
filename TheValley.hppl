@@ -1,0 +1,389 @@
+EXPORT The_Valley()
+BEGIN
+END;
+#pragma mode(separator(.,;) integer(h32))
+
+LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
+SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
+InitPlayer(); ReadName(); ReadType();
+Play(); Message(); MsgsAt(); MsgAt();
+ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
+
+LOCAL diaplayTheme:=0, playerExt:=".csv";
+LOCAL valleyX:=0, valleyY:=0; rating:=1;
+LOCAL treasure:=0, experience:=5, turns:=0;
+LOCAL strength:=26, psi:=24, stamina:=150;
+LOCAL hasAmulet:=0, amuletStones:=0, hasHelm:=0;
+LOCAL space:=32;
+LOCAL vBorder:=97, castle:=98, pathUp:=99, pathDown:=100, wood:=101, tree:=102;
+LOCAL swamp:=103, tower:=104, player:=105, wall:=106, building:=107, stairs:=108;
+LOCAL door:=109, sBorder:=110, lake:=111, playerLake:=112, special:=113, tuft:=114;
+LOCAL valleyMap:={};
+LOCAL needPlayer:=1, playerType:=6, playerName:="NOBODY";
+LOCAL psiGain:=0.5, physicalGain:=1.25, maxStamina:=50, maxStrength:=50, maxPsi:=50;
+LOCAL playerTypes:={{"WIZARD", 2.0, 0.5, 22, 28, 100, 66, 777},
+  {"THINKER", 1.5, 0.75, 24, 26, 113, 72, 241},
+  {"BARBARIAN", 0.5, 2.0, 28, 22, 125, 77, 89},
+  {"WARRIOR", 1.0, 1.25, 26, 24, 113, 75, 117},
+  {"CLERIC", 1.25, 1.0, 25, 25, 113, 74, 157},
+  {"DOLT", 1.0, 1.0, 20, 20, 113, 75, 117}};
+
+Symb()
+BEGIN
+END;
+SymbSetup()
+BEGIN
+END;
+PlotSetup()
+BEGIN
+END;
+EXPORT Plot()
+BEGIN
+  Play();
+END;
+Num()
+BEGIN
+END;
+NumSetup()
+BEGIN
+END;
+
+VIEW "Help", START()
+BEGIN
+  LoadGfx();
+  STARTVIEW(6, 1);
+END;
+
+VIEW "Light Theme", LightTheme()
+BEGIN
+  IF diaplayTheme == 1 THEN
+    INVERT_P(G0);
+    INVERT_P(G1);
+  END;
+  diaplayTheme:=0;
+  Play();
+END;
+
+VIEW "Dark Theme", DarkTheme()
+BEGIN
+  IF diaplayTheme == 0 THEN
+    INVERT_P(G0);
+    INVERT_P(G1);
+  END;
+  diaplayTheme:=1;
+  Play();
+END;
+
+Play()
+BEGIN
+  IF needPlayer THEN
+    SetupPlayer();
+    SetupValley();
+  END;
+  ClrScrn();
+  ShowValley();
+  ShowPlayer();
+  ShowLabels();
+  ShowScores();
+  Message(2, {"SAFE ON THE PATH...WHICH WAY ?"});
+  Message(2, {"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
+  WHILE GETKEY == -1 DO
+    WAIT(0.5);
+  END;
+  SavePlayer();
+END;
+
+SetupPlayer()
+BEGIN
+  LOCAL options:={"New Player"}, option:=2, numFiles, idx, name, extPos;
+  numFiles:=SIZE(AFiles);
+  IF numFiles > 0 THEN
+    FOR idx FROM 1 TO numFiles DO
+      name:=AFiles(idx);
+      extPos:=INSTRING(name, playerExt);
+      IF extPos > 1 THEN
+        options(option):=LEFT(name, extPos-1);
+        option:=option+1;
+      END;
+    END;
+  END;
+  idx:=-1;
+  CHOOSE(idx, "Select Player", options);
+  IF idx > 1 THEN
+    LoadPlayer(options(idx));
+  ELSE
+    NewPlayer();
+  END;
+  needPlayer:=0;
+END;
+
+NewPlayer()
+BEGIN
+  LOCAL idx;
+  ClrScrn();
+  MsgAt(0, 1, "CHARACTER'S NAME: ");
+  playerName:=ReadName();
+  MsgAt(0, 3, "CHARACTER TYPES...CHOOSE CAREFULLY");
+  FOR idx FROM 1 TO SIZE(playerTypes)-1 DO
+    MsgAt(0, idx+4, playerTypes(idx, 1));
+    MsgAt(10, idx+4, STRING(idx));
+  END;
+  playerType:=ReadType();
+  InitPlayer();
+END;
+
+ReadName()
+BEGIN
+  LOCAL name:="", key;
+  key:=GETKEY;
+  WHILE key <> 30 OR SIZE(name) == 0 DO
+    IF key == -1 THEN WAIT(0.1); key:=GETKEY; CONTINUE; END;
+    IF key == 19 AND SIZE(name) > 0 THEN
+      IF SIZE(name) == 1 THEN
+        name:="";
+      ELSE
+        name:=LEFT(name, SIZE(name)-1);
+      END;
+      MsgAt(18, 1, name+" ");
+      key:=GETKEY;
+      CONTINUE;
+    END;
+    IF key < 14 OR key == 19 OR key == 36 OR key == 41 OR key > 43 THEN key:=GETKEY; CONTINUE; END;
+    IF key >= 42 THEN key:=key-1; END;
+    IF key >= 37 THEN key:=key-1; END;
+    IF key >= 31 THEN key:=key-1; END;
+    IF key >= 20 THEN key:=key-1; END;
+    key:=key+51;
+    name:=name+CHAR(key);
+    MsgAt(18, 1, name);
+    key:=GETKEY;
+  END;
+  RETURN LEFT(name, 16);
+END;
+
+ReadType()
+BEGIN
+  LOCAL key:=-1;
+  WHILE key == -1 DO
+    WAIT(0.1);
+    key:=GETKEY;
+  END;
+  IF key == 42 THEN RETURN 1; END;
+  IF key == 43 THEN RETURN 2; END;
+  IF key == 44 THEN RETURN 3; END;
+  IF key == 37 THEN RETURN 4; END;
+  IF key == 38 THEN RETURN 5; END;
+  RETURN 6;
+END;
+
+SavePlayer()
+BEGIN
+  LOCAL details, fileName;
+  fileName:=playerName+playerExt;
+  details:={playerType, treasure, experience, turns, strength, psi, hasAmulet, amuletStones, hasHelm};
+  AFiles(fileName):=details;
+END;
+
+LoadPlayer(name)
+BEGIN
+  LOCAL details, fileName;
+  fileName:=name+playerExt;
+  details:=AFiles(fileName);
+  playerName:=UPPER(name);
+  playerType:=details(1);
+  InitPlayer();
+  treasure:=details(2);
+  experience:=details(3);
+  turns:=details(4);
+  strength:=details(5);
+  psi:=details(6);
+  hasAmulet:=details(7);
+  amuletStones:=details(8);
+  hasHelm:=details(9);
+END;
+
+InitPlayer()
+BEGIN
+  psiGain:=playerTypes(playerType, 2);
+  physicalGain:=playerTypes(playerType, 3);
+  treasure:=0;
+  experience:=5;
+  turns:=0;
+  stamina:=150;
+  strength:=playerTypes(playerType, 4);
+  psi:=playerTypes(playerType, 5);
+  maxStamina:=playerTypes(playerType, 6);
+  maxStrength:=playerTypes(playerType, 7);
+  maxPsi:=playerTypes(playerType, 8);
+END;
+
+SetupValley()
+BEGIN
+  LOCAL idx, borderRow, innerRow, x, y, dir;
+  LOCAL element, elem1, elem2, prev, scenes;
+  valleyMap:={};
+  borderRow:={};
+  FOR idx FROM 1 TO 40 DO
+    borderRow(idx):=vBorder;
+  END;
+  innerRow:={vBorder};
+  FOR idx FROM 2 TO 39 DO
+    innerRow(idx):=space;
+  END;
+  innerRow(40):=vBorder;
+  valleyMap(1):=borderRow;
+  FOR idx FROM 2 TO 13 DO
+    valleyMap(idx):=innerRow;
+  END;
+  valleyMap(14):=borderRow;
+  x:=2; y:=RANDINT(3, 12);
+  valleyX:=2; valleyY:= y;
+  valleyMap(y, x):=castle;
+  prev:=castle;
+  FOR x FROM 3 TO 38 DO
+    dir:=RANDINT();
+    CASE
+      IF y <= 2 THEN element:=pathDown; END;
+      IF y >= 13 THEN element:=pathUp; END;
+      IF dir == 0 THEN element:=pathUp; END;
+      DEFAULT element:=pathDown;
+    END;
+    CASE
+      IF prev == castle THEN
+        IF element == pathDown THEN y:=y+1; ELSE y:=y-1; END;
+      END;
+      IF prev == pathDown THEN
+        IF element == pathDown THEN y:=y+1; END;
+      END;
+      DEFAULT IF element == pathUp THEN y:=y-1; END;
+    END;
+    prev:=element;
+    valleyMap(y, x):=element;
+  END;
+  IF element == pathDown THEN y:=y+1; ELSE y:=y-1; END;
+  IF y > 13 THEN y:=y-1; END;
+  IF y < 2 THEN y:=y+1; END;
+  valleyMap(y, 39):=castle;
+  scenes:={wood, wood, swamp, swamp};
+  FOR idx FROM 1 TO SIZE(scenes) DO
+    elem1:=-1; elem2:=-1;
+    WHILE elem1 <> space OR elem2 <> space DO
+      x:=RANDINT(2, 39);
+      y:=RANDINT(2, 13);
+      elem1:=valleyMap(y, x);
+      elem2:=valleyMap(y, x+1);
+    END;
+    valleyMap(y, x):=scenes(idx);
+    valleyMap(y, x+1):=scenes(idx);
+  END;
+  WHILE element <> space DO
+    x:=RANDINT(2, 39);
+    y:=RANDINT(2, 13);
+    element:=valleyMap(y, x);
+  END;
+  valleyMap(y, x):=tower;
+END;
+
+LoadGfx()
+BEGIN
+  G1:=AFiles("Charset.png");
+  IF diaplayTheme == 1 THEN
+    INVERT_P(G1);
+  END;
+END;
+
+ShowValley()
+BEGIN
+  ShowMap(valleyMap);
+END;
+
+ShowPlayer()
+BEGIN
+  MsgAt(0, 15, playerName+"    "+playerTypes(playerType, 1));
+END;
+
+ShowMap(map)
+BEGIN
+  LOCAL row, col, mapRow;
+  ClrMap();
+  MsgsAt(0, 0, map);
+END;
+
+ShowLabels()
+BEGIN
+  ClrAt(0, 16, 40, 14);
+  MsgsAt(0, 16, {"TREASURE   = ", "EXPERIENCE = ", "TURNS      = "});
+  MsgsAt(21, 16, {"COMBAT STR = ", "PSI POWER  = ", "STAMINA    = "});
+END;
+
+ShowScores()
+BEGIN
+  IF strength > maxStrength THEN strength:=maxStrength; END;
+  IF psi < 7 THEN psi:= 7; END;
+  IF psi > maxPsi THEN psi:=maxPsi; END;
+  IF stamina > maxStamina THEN stamina:=maxStamina; END;
+  rating:=IP(0.067 * ((experience + treasure/3) ^ 0.5) + LOG(experience / ((turns + 1) ^ 1.5)));
+  IF rating > 28 THEN rating:=28; END;
+  IF rating < 1 THEN rating:=1; END;
+  ClrAt(13, 16, 7, 3);
+  MsgAt(13, 16, STRING(treasure));
+  MsgAt(13, 17, STRING(experience));
+  MsgAt(13, 18, STRING(turns));
+  ClrAt(34, 16, 4, 3);
+  MsgAt(34, 16, STRING(strength));
+  MsgAt(34, 17, STRING(psi));
+  MsgAt(34, 18, STRING(stamina));
+  ClrAt(0, 19, 40, 1);
+END;
+
+Message(t, messages)
+BEGIN
+  MsgsAt(0, 21, messages);
+  WAIT(t);
+  ClrMsg();
+END;
+
+MsgsAt(col, row, messages)
+BEGIN
+  LOCAL idx, msg;
+  FOR idx FROM 1 TO SIZE(messages) DO
+    msg:=messages(idx);
+    MsgAt(col, row+idx-1, msg);
+  END;
+END;
+
+MsgAt(col, row, message)
+BEGIN
+  LOCAL idx, char, x, y;
+  y:=row*8;
+  FOR idx FROM 1 TO SIZE(message) DO
+    char:=(message(idx)-32)*8;
+    x:=(col+idx-1)*8;
+    BLIT_P(G0, x, y, x+8, y+8, G1, char, 0, char+8, 8);
+  END;
+END;
+
+ClrScrn()
+BEGIN
+  ClrAt(0, 0, 40, 30);
+END;
+
+ClrMap()
+BEGIN
+  ClrAt(0, 0, 40, 14);
+END;
+
+ClrMsg()
+BEGIN
+  ClrAt(0, 21, 40, 9);
+END;
+
+ClrAt(col, row, dCol, dRow)
+BEGIN
+  LOCAL x:=col*8, y:=row*8, dx:=dCol*8, dy:=dRow*8;
+  IF diaplayTheme == 1 THEN
+    RECT_P(G0, x, y, x+dx, y+dy, #0, #0);
+  ELSE
+    RECT_P(G0, x, y, x+dx, y+dy, #FFFFFF, #FFFFFF);
+  END;
+END;
