@@ -8,6 +8,8 @@ SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType();
 Play(); Message(); MsgsAt(); MsgAt();
 ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
+ShowRating();
+Delay();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
 LOCAL valleyX:=0, valleyY:=0; rating:=1;
@@ -27,6 +29,13 @@ LOCAL playerTypes:={{"WIZARD", 2.0, 0.5, 22, 28, 100, 66, 777},
   {"WARRIOR", 1.0, 1.25, 26, 24, 113, 75, 117},
   {"CLERIC", 1.25, 1.0, 25, 25, 113, 74, 157},
   {"DOLT", 1.0, 1.0, 20, 20, 113, 75, 117}};
+LOCAL ratings:={"MONSTER FOOD", "PEASANT", "CADET", "CANNON FODDER", "PATH WALKER",
+  "NOVICE ADVENTURER", "SURVIVOR", "ADVENTURER", "ASSASSIN",
+  "APPRENTICE HERO", "GIANT KILLER", "HERO", "MASTER OF THE SWORD",
+  "CHAMPION", "NECROMANCER", "LOREMASTER", "PALADIN", "SUPERHERO",
+  "DRAGON SLAYER", "KNIGHT OF THE VALLEY", "MASTER OF COMBAT",
+  "DOMINATOR", "PRINCE OF THE VALLEY", "GUARDIAN", "WAR LORD",
+  "DEMON KILLER", "LORD OF THE VALLEY", "MASTER OF DESTINY"};
 
 Symb()
 BEGIN
@@ -85,10 +94,11 @@ BEGIN
   ShowPlayer();
   ShowLabels();
   ShowScores();
-  Message(2, {"SAFE ON THE PATH...WHICH WAY ?"});
-  Message(2, {"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
+  Message(200, {"SAFE ON THE PATH...WHICH WAY ?"});
+  Message(200, {"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
+  ShowRating();
   WHILE GETKEY == -1 DO
-    WAIT(0.5);
+    Delay(50);
   END;
   SavePlayer();
 END;
@@ -137,7 +147,7 @@ BEGIN
   LOCAL name:="", key;
   key:=GETKEY;
   WHILE key <> 30 OR SIZE(name) == 0 DO
-    IF key == -1 THEN WAIT(0.1); key:=GETKEY; CONTINUE; END;
+    IF key == -1 THEN Delay(10); key:=GETKEY; CONTINUE; END;
     IF key == 19 AND SIZE(name) > 0 THEN
       IF SIZE(name) == 1 THEN
         name:="";
@@ -165,7 +175,7 @@ ReadType()
 BEGIN
   LOCAL key:=-1;
   WHILE key == -1 DO
-    WAIT(0.1);
+    Delay(10);
     key:=GETKEY;
   END;
   IF key == 42 THEN RETURN 1; END;
@@ -336,10 +346,27 @@ BEGIN
   ClrAt(0, 19, 40, 1);
 END;
 
+ShowRating()
+BEGIN
+  LOCAL messages:={}, idx:=2;
+  Delay(5);
+  ClrMsg();
+  messages(1):="YOUR RATING NOW BE "+STRING(rating)+" ("+ratings(rating)+")";
+  IF hasHelm THEN
+    messages(idx):="YOU HAVE THE HELM OF EVANNA";
+    idx:=idx+1;
+  END;
+  IF hasAmulet THEN
+    messages(idx):="AMULET STONES... "+amuletStones;
+    idx:=idx+1;
+  END;
+  Message(250, messages);
+END;
+
 Message(t, messages)
 BEGIN
   MsgsAt(0, 21, messages);
-  WAIT(t);
+  Delay(t);
   ClrMsg();
 END;
 
@@ -386,4 +413,9 @@ BEGIN
   ELSE
     RECT_P(G0, x, y, x+dx, y+dy, #FFFFFF, #FFFFFF);
   END;
+END;
+
+Delay(n)
+BEGIN
+  WAIT(n/100);
 END;
