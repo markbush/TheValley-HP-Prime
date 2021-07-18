@@ -8,11 +8,11 @@ SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType(); GetChar(); CombatGet(); GetAns();
 Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
-ShowRating(); ShowPlayerLoc(); ShowGame();
+ShowRating(); ShowPlayerLoc(); ShowGame(); OnPath();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
 IsEntry(); IsExit(); HandleStairs(); MaybeDie(); SpecialFind();
-UpdateTreasure();
+UpdateTreasure(); FindSelect();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
 CreateLair(); CreateTemple();
 SceneMap();
@@ -104,7 +104,7 @@ BEGIN
     ShowGame();
     currentItem:=currentMap(playerY, playerX);
     stamina:=stamina+10;
-    IF currentItem == pathUp OR currentItem == pathDown THEN
+    IF OnPath(currentItem) THEN
       MsgAt(0, 21, "SAFE ON THE PATH...WHICH WAY ?");
     ELSE
       MsgAt(0, 21, "YOUR MOVE...WHICH DIRECTION ?");
@@ -120,9 +120,14 @@ BEGIN
   END;
 END;
 
+OnPath(item)
+BEGIN
+  RETURN POS({pathUp, pathDown}, item);
+END;
+
 PlayerMove(move)
 BEGIN
-  LOCAL dir, newX, newY, newItem;
+  LOCAL dir, newX, newY, newItem, randomFind;
   IF move == ratingKey THEN
     ShowRating();
     stamina:=stamina-10;
@@ -176,11 +181,27 @@ BEGIN
   END;
   playerX:=newX;
   playerY:=newY;
+  IF OnPath(newItem) THEN
+    Delay(5);
+    RETURN 0;
+  END;
   ShowGame();
   IF newItem == special THEN
     SpecialFind();
     Delay(80);
     RETURN 0;
+  END;
+  randomFind:=RANDOM;
+  CASE
+    IF randomFind < 0.33 THEN
+      // monster
+      Message(100, {"MONSTER"});
+    END;
+    IF randomFind > 0.75 THEN
+      FindSelect();
+    END;
+    DEFAULT
+      Message(100, {"NOTHING OF VALUE...SEARCH ON"});
   END;
   RETURN 0;
 END;
@@ -336,6 +357,33 @@ BEGIN
   IF hasAmulet THEN factor:=factor+1; END;
   IF hasHelm THEN factor:=factor+1; END;
   treasure:=treasure + (100 * (factor + level));
+END;
+
+FindSelect()
+BEGIN
+  LOCAL find;
+  find:=RANDINT(1, 6);
+  CASE
+    IF find == 1 THEN
+      Message(100, {"A CIRCLE OF EVIL...DEPART IN HASTE !"});
+      strength:=strength + IP((level+1)/2);
+      psi:=psi - IP((level+1)/2);
+      stamina:=stamina - 20;
+    END;
+    IF find <= 3 THEN
+      Message(100, {"A HOARD OF GOLD"});
+      treasure:=treasure + IP((level * RANDOM * 100) + 100);
+    END;
+    DEFAULT
+      IF find <= 5 THEN
+        Message(100, {"YOU FEEL THE AURA OF THE DEEP MAGIC...", "        ...ALL AROUND YOU..."});
+      ELSE
+        Message(100, {"...A PLACE OF ANCIENT POWER..."});
+      END;
+      psi:=psi + 2 + IP(level * psiGain);
+      strength:=strength + 1 + IP(level * physicalGain);
+      stamina:=stamina + 25;
+  END;
 END;
 
 PushScene()
