@@ -8,11 +8,11 @@ SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType(); GetChar(); CombatGet(); GetAns();
 Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
-ShowRating(); ShowPlayerLoc(); ShowGame(); OnPath();
+ShowRating(); ShowPlayerLoc(); ShowGame(); OnPath(); InLake();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
 IsEntry(); IsExit(); HandleStairs(); MaybeDie(); SpecialFind();
-UpdateTreasure(); FindSelect();
+UpdateTreasure(); FindSelect(); SelectMonster(); Fight();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
 CreateLair(); CreateTemple();
 SceneMap();
@@ -52,6 +52,27 @@ LOCAL lakePos:={{2, 0}, {3, 0},
   {1, 4}, {2, 4}, {3, 4}, {4, 4}, {6, 4}, {7, 4},
   {3, 5}, {4, 5},
   {4, 6}};
+LOCAL monsterTypes:={{"WOLFEN", "A", 9, 0},
+  {"HOB-GOBLIN", "A", 9, 0},
+  {"ORC", "A", 9, 0},
+  {"FIRE-IMP", "E", 7, 3},
+  {"ROCK-TROLL", "G", 19, 0},
+  {"HARPY", "E", 10, 12},
+  {"OGRE", "A", 23, 0},
+  {"BARROW-WIGHT", "B", 0, 25},
+  {"CENTAUR", "H", 18, 14},
+  {"FIRE-GIANT", "E", 26, 20},
+  {"THUNDER-LIZARD", "V", 50, 0},
+  {"MINOTAUR", "C", 35, 25},
+  {"WRAITH", "C", 0, 30},
+  {"WYVERN", "F", 36, 12},
+  {"DRAGON", "B", 50, 20},
+  {"RING-WRAITH", "C", 0, 45},
+  {"BALROG", "A", 50, 50},
+  {"WATER-IMP", "L", 15, 15},
+  {"KRAKEN", "L", 50, 0}};
+LOCAL monster:={}, monsterOptions:="VAEGH", fireGiant:=10, balrog:=17, ringWraith:=16;
+LOCAL monsterStrength:=0, monsterPsi:=0, monsterExperience:=0, fighting:=0;
 LOCAL wallOffsets:={4,7,3,6,4,4,6,5,3,6,0,3,8,4,3,5,5,3,8,3,4,5,0,6,3,6,4,6,4,7,4,3};
 LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
 LOCAL yKey:=42, nKey:=28, uKey:=37, dKey:=17;
@@ -125,6 +146,11 @@ BEGIN
   RETURN POS({pathUp, pathDown}, item);
 END;
 
+InLake()
+BEGIN
+  RETURN (currentMap(playerY, playerX) == lake);
+END;
+
 PlayerMove(move)
 BEGIN
   LOCAL dir, newX, newY, newItem, randomFind;
@@ -194,8 +220,11 @@ BEGIN
   randomFind:=RANDOM;
   CASE
     IF randomFind < 0.33 THEN
-      // monster
-      Message(100, {"MONSTER"});
+      SelectMonster();
+      Fight();
+      IF (strength <= 0) OR (stamina <= 0) THEN
+        IF MaybeDie() THEN RETURN 1; END;
+      END;
     END;
     IF randomFind > 0.75 THEN
       FindSelect();
@@ -386,10 +415,43 @@ BEGIN
   END;
 END;
 
+SelectMonster()
+BEGIN
+  LOCAL monsterSelected:=0, monsterNum;
+  WHILE NOT monsterSelected DO
+    monsterNum:=RANDINT(1, 17);
+    IF (monsterNum > fireGiant) AND (RANDOM > 0.85) THEN CONTINUE; END;
+    IF InLake() THEN monsterNum:=RANDINT(18, 19); END;
+    IF (monsterNum == balrog) AND (RANDOM < 0.7) THEN CONTINUE; END;
+    IF (level < 5) AND (monsterNum == ringWraith) THEN CONTINUE; END;
+    IF INSTRING(monsterOptions, monsterTypes(monsterNum, 2)) THEN
+      monsterSelected:=1;
+    END;
+  END;
+  monster:=monsterTypes(monsterNum);
+  IF monster(3) == 0 THEN
+    monsterStrength:=0;
+  ELSE
+    monsterStrength:=IP((strength * 0.3) + monster(3) * (level ^ 0.2) / (RANDOM + 1));
+  END;
+  IF monster(4) == 0 THEN
+    monsterPsi:=0;
+  ELSE
+    monsterPsi:=IP(monster(4) * (level ^ 0.2) / (RANDOM + 1));
+  END;
+  monsterExperience:=IP((monsterNum + 1) * (level ^ 1.5));
+  Message(100, {"*** BEWARE...THOU HAST ENCOUNTERED ***", "AN EVIL "+monster(1)});
+END;
+
+Fight()
+BEGIN
+  fighting:=1;
+END;
+
 PushScene()
 BEGIN
   LOCAL newIdx:=SIZE(scenes)+1;
-  scenes(newIdx):={currentMap, playerX, playerY, level, inWoods};
+  scenes(newIdx):={currentMap, playerX, playerY, level, inWoods, monsterOptions};
 END;
 
 PopScene()
@@ -402,6 +464,7 @@ BEGIN
   playerY:=entry(3);
   level:=entry(4);
   inWoods:=entry(5);
+  monsterOptions:=entry(6);
   buildingType:=0;
   IF numScenes == 1 THEN
     scenes:={};
@@ -622,6 +685,7 @@ CreateWood()
 BEGIN
   level:=3;
   inWoods:=1;
+  monsterOptions:="FAEHL";
   SceneMap(tree);
 END;
 
@@ -629,6 +693,7 @@ CreateSwamp()
 BEGIN
   level:=2;
   inWoods:=0;
+  monsterOptions:="AFL";
   SceneMap(tuft);
 END;
 
@@ -636,6 +701,7 @@ CreateLair()
 BEGIN
   buildingType:=inLair;
   level:=7;
+  monsterOptions:="CBE";
   CreateBuilding();
   currentMap(15, 7):=door;
   playerX:=7;
@@ -647,6 +713,7 @@ CreateTemple()
 BEGIN
   buildingType:=inTemple;
   level:=6;
+  monsterOptions:="CBE";
   CreateBuilding();
   currentMap(15, 7):=door;
   playerX:=7;
@@ -738,6 +805,7 @@ CreateTower(newLevel)
 BEGIN
   buildingType:=inTower;
   level:=newLevel;
+  monsterOptions:="CAGE";
   CreateBuilding();
   IF (level MOD 2) == 0 THEN
     currentMap(14, 4):=stairs;
@@ -820,7 +888,11 @@ END;
 
 ShowPlayerLoc()
 BEGIN
-  MsgAt(playerX-1, playerY-1, {player});
+  IF InLake() THEN
+    MsgAt(playerX-1, playerY-1, {playerLake});
+  ELSE
+    MsgAt(playerX-1, playerY-1, {player});
+  END;
 END;
 
 ShowMap()
@@ -864,6 +936,10 @@ BEGIN
   MsgAt(34, 17, STRING(psi));
   MsgAt(34, 18, STRING(stamina));
   ClrAt(0, 19, 40, 1);
+  IF fighting THEN
+    MsgAt(0, 19, monster(1));
+    MsgAt(21, 19, "M STR = "+monsterStrength+" "+monsterPsi);
+  END;
 END;
 
 ShowRating()
