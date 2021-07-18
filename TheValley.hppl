@@ -10,11 +10,12 @@ Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
-IsBlocked(); WillQuit();
+IsBlocked(); WillQuit(); NotAllowed();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
 LOCAL valleyX:=0, valleyY:=0; rating:=1;
 LOCAL playerX:=0, playerY:=0; enteredAt:=0;
+LOCAL currentItem:=-1;
 LOCAL treasure:=0, experience:=5, turns:=0;
 LOCAL strength:=26, psi:=24, stamina:=150;
 LOCAL hasAmulet:=0, amuletStones:=0, hasHelm:=0;
@@ -83,13 +84,13 @@ END;
 
 PlayLoop()
 BEGIN
-  LOCAL item, move, shouldQuit;
+  LOCAL move, shouldQuit;
   ClrScrn();
   WHILE 1 DO
     ShowGame();
-    item:=currentMap(playerY, playerX);
+    currentItem:=currentMap(playerY, playerX);
     stamina:=stamina+10;
-    IF item == pathUp OR item == pathDown THEN
+    IF currentItem == pathUp OR currentItem == pathDown THEN
       MsgAt(0, 21, "SAFE ON THE PATH...WHICH WAY ?");
     ELSE
       MsgAt(0, 21, "YOUR MOVE...WHICH DIRECTION ?");
@@ -123,6 +124,12 @@ BEGIN
     playerY:=newY;
     RETURN WillQuit();
   END;
+  IF NotAllowed(newItem) THEN
+    turns:=turns-1;
+    stamina:=stamina-10;
+    Message(100, {"YOU CANNOT ENTER THIS WAY..."});
+    RETURN 0;
+  END;
   playerX:=newX;
   playerY:=newY;
   RETURN 0;
@@ -144,7 +151,7 @@ END;
 
 IsBlocked(item)
 BEGIN
-
+  RETURN POS({vBorder, wall, tree}, item);
 END;
 
 WillQuit()
@@ -170,6 +177,12 @@ BEGIN
     Delay(200);
   END;
   RETURN 1;
+END;
+
+NotAllowed(newItem)
+BEGIN
+  IF currentItem == lake AND newItem == building THEN RETURN 1; END;
+  RETURN 0;
 END;
 
 SetupPlayer()
