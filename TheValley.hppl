@@ -6,13 +6,14 @@ END;
 LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType(); Get(); CombatGet();
-Play(); Message(); MsgsAt(); MsgAt();
+Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
-ShowRating();
-Delay();
+ShowRating(); ShowPlayerLoc();
+Delay(); HandleSpecial(); PlayerMove();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
 LOCAL valleyX:=0, valleyY:=0; rating:=1;
+LOCAL playerX:=0, playerY:=0;
 LOCAL treasure:=0, experience:=5, turns:=0;
 LOCAL strength:=26, psi:=24, stamina:=150;
 LOCAL hasAmulet:=0, amuletStones:=0, hasHelm:=0;
@@ -20,7 +21,7 @@ LOCAL space:=32;
 LOCAL vBorder:=97, castle:=98, pathUp:=99, pathDown:=100, wood:=101, tree:=102;
 LOCAL swamp:=103, tower:=104, player:=105, wall:=106, building:=107, stairs:=108;
 LOCAL door:=109, sBorder:=110, lake:=111, playerLake:=112, special:=113, tuft:=114;
-LOCAL valleyMap:={};
+LOCAL valleyMap:={};  currentMap:={};
 LOCAL needPlayer:=1, playerType:=6, playerName:="NOBODY";
 LOCAL psiGain:=0.5, physicalGain:=1.25, maxStamina:=50, maxStrength:=50, maxPsi:=50;
 LOCAL playerTypes:={{"WIZARD", 2.0, 0.5, 22, 28, 100, 66, 777},
@@ -36,6 +37,7 @@ LOCAL ratings:={"MONSTER FOOD", "PEASANT", "CADET", "CANNON FODDER", "PATH WALKE
   "DRAGON SLAYER", "KNIGHT OF THE VALLEY", "MASTER OF COMBAT",
   "DOMINATOR", "PRINCE OF THE VALLEY", "GUARDIAN", "WAR LORD",
   "DEMON KILLER", "LORD OF THE VALLEY", "MASTER OF DESTINY"};
+LOCAL ratingKey:=50;
 
 Symb()
 BEGIN
@@ -71,18 +73,49 @@ BEGIN
     SetupPlayer();
     SetupValley();
   END;
+  playerX:=valleyX;
+  playerY:=valleyY;
+  currentMap:=valleyMap;
+  PlayLoop();
+END;
+
+PlayLoop()
+BEGIN
+  LOCAL item, move, shouldQuit;
   ClrScrn();
-  ShowValley();
-  ShowPlayer();
-  ShowLabels();
-  ShowScores();
-  Message(200, {"SAFE ON THE PATH...WHICH WAY ?"});
-  Message(200, {"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
-  ShowRating();
-  WHILE GETKEY == -1 DO
-    Delay(50);
+  WHILE 1 DO
+    ShowMap(currentMap);
+    ShowPlayer();
+    ShowLabels();
+    ShowScores();
+    ShowPlayerLoc();
+    item:=currentMap(playerY, playerX);
+    stamina:=stamina+10;
+    IF item == pathUp OR item == pathDown THEN
+      MsgAt(0, 21, "SAFE ON THE PATH...WHICH WAY ?");
+    ELSE
+      MsgAt(0, 21, "YOUR MOVE...WHICH DIRECTION ?");
+    END;
+    move:=Get();
+    IF move < 14 THEN
+      shouldQuit:=HandleSpecial();
+    ELSE
+      shouldQuit:=PlayerMove(move);
+    END;
+    IF shouldQuit THEN
+      SavePlayer();
+      RETURN;
+    END;
   END;
-  SavePlayer();
+END;
+
+PlayerMove(move)
+BEGIN
+  IF move == ratingKey THEN
+    ShowRating();
+    RETURN 0;
+  END;
+  RETURN 0;
 END;
 
 SetupPlayer()
@@ -294,9 +327,13 @@ BEGIN
   MsgAt(0, 15, playerName+"    "+playerTypes(playerType, 1));
 END;
 
+ShowPlayerLoc()
+BEGIN
+  MsgAt(playerX-1, playerY-1, {player});
+END;
+
 ShowMap(map)
 BEGIN
-  LOCAL row, col, mapRow;
   ClrMap();
   MsgsAt(0, 0, map);
 END;
@@ -424,4 +461,9 @@ END;
 Delay(n)
 BEGIN
   WAIT(n/100);
+END;
+
+HandleSpecial(key)
+BEGIN
+  RETURN 1;
 END;
