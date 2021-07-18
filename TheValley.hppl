@@ -11,7 +11,7 @@ ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
-IsEntry();
+IsEntry(); IsExit();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
 SceneMap();
 
@@ -147,6 +147,17 @@ BEGIN
     NewSceneFor(newItem);
     RETURN 0;
   END;
+  IF IsExit(newItem) THEN
+    IF turns > enteredAt + RANDINT(1, 6) THEN
+      PopScene();
+      RETURN 0;
+    ELSE
+      turns:=turns-1;
+      stamina:=stamina-10;
+    Message(100, {"THE WAY IS BARRED"});
+    RETURN 0;
+    END;
+  END;
   playerX:=newX;
   playerY:=newY;
   RETURN 0;
@@ -205,6 +216,11 @@ END;
 IsEntry(newItem)
 BEGIN
   RETURN POS({wood, swamp, building, tower}, newItem);
+END;
+
+IsExit(newItem)
+BEGIN
+  RETURN POS({door, sBorder}, newItem);
 END;
 
 PushScene()
