@@ -5,11 +5,12 @@ END;
 
 LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
-InitPlayer(); ReadName(); ReadType(); Get(); CombatGet();
+InitPlayer(); ReadName(); ReadType(); Get(); CombatGet(); GetAns();
 Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
-ShowRating(); ShowPlayerLoc();
+ShowRating(); ShowPlayerLoc(); ShowGame();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
+IsBlocked(); WillQuit();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
 LOCAL valleyX:=0, valleyY:=0; rating:=1;
@@ -38,6 +39,7 @@ LOCAL ratings:={"MONSTER FOOD", "PEASANT", "CADET", "CANNON FODDER", "PATH WALKE
   "DOMINATOR", "PRINCE OF THE VALLEY", "GUARDIAN", "WAR LORD",
   "DEMON KILLER", "LORD OF THE VALLEY", "MASTER OF DESTINY"};
 LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
+LOCAL yKey:=42, nKey:=28;
 
 Symb()
 BEGIN
@@ -84,11 +86,7 @@ BEGIN
   LOCAL item, move, shouldQuit;
   ClrScrn();
   WHILE 1 DO
-    ShowMap(currentMap);
-    ShowPlayer();
-    ShowLabels();
-    ShowScores();
-    ShowPlayerLoc();
+    ShowGame();
     item:=currentMap(playerY, playerX);
     stamina:=stamina+10;
     IF item == pathUp OR item == pathDown THEN
@@ -102,10 +100,7 @@ BEGIN
     ELSE
       shouldQuit:=PlayerMove(move);
     END;
-    IF shouldQuit THEN
-      SavePlayer();
-      RETURN;
-    END;
+    IF shouldQuit THEN RETURN; END;
   END;
 END;
 
@@ -114,6 +109,7 @@ BEGIN
   LOCAL dir, newX, newY, newItem;
   IF move == ratingKey THEN
     ShowRating();
+    stamina:=stamina-10;
     RETURN 0;
   END;
   dir:=DirForMove(move);
@@ -121,6 +117,12 @@ BEGIN
   newY:=playerY+dir(2);
   newItem:=currentMap(newY, newX);
   turns:=turns+1;
+  IF IsBlocked(newItem) THEN turns:=turns-1; RETURN 0; END;
+  IF newItem == castle THEN
+    playerX:=newX;
+    playerY:=newY;
+    RETURN WillQuit();
+  END;
   playerX:=newX;
   playerY:=newY;
   RETURN 0;
@@ -138,6 +140,36 @@ BEGIN
   dx:=(move MOD 3) - 1;
   dy:=IP(move / 3) - 1;
   RETURN {dx, dy};
+END;
+
+IsBlocked(item)
+BEGIN
+
+END;
+
+WillQuit()
+BEGIN
+  LOCAL key;
+  IF strength < 20 THEN strength:=20; END;
+  ShowGame();
+  ClrMsg();
+  MsgsAt(0, 21, {"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
+  key:=GetAns({yKey, nKey});
+  ShowRating();
+  IF key == nKey THEN
+    stamina:=150;
+    Message(250, {"THY WOUNDS HEALED...THY SWORD SHARP", "GO AS THE GODS DEMAND..TRUST NONE OTHER"});
+    RETURN 0;
+  END;
+  ClrScrn();
+  MsgAt(0, 0, "DO YOU WISH TO SAVE "+playerName+" ?");
+  key:=GetAns({yKey, nKey});
+  IF key == yKey THEN
+    SavePlayer();
+    MsgAt(0, 3, "    *** DONE ***");
+    Delay(200);
+  END;
+  RETURN 1;
 END;
 
 SetupPlayer()
@@ -339,6 +371,15 @@ BEGIN
   END;
 END;
 
+ShowGame()
+BEGIN
+  ShowMap(currentMap);
+  ShowPlayer();
+  ShowLabels();
+  ShowScores();
+  ShowPlayerLoc();
+END;
+
 ShowValley()
 BEGIN
   ShowMap(valleyMap);
@@ -423,6 +464,15 @@ BEGIN
   WHILE (TICKS - s) < 500 DO
     key:=GETKEY;
     IF key <> -1 THEN BREAK; END;
+  END;
+  RETURN key;
+END;
+
+GetAns(options)
+BEGIN
+  LOCAL key:=-1;
+  WHILE POS(options, key) == 0 DO
+    key:=Get();
   END;
   RETURN key;
 END;
