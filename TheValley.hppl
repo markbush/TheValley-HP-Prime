@@ -9,11 +9,11 @@ InitPlayer(); ReadName(); ReadType(); Get(); CombatGet();
 Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc();
-Delay(); HandleSpecial(); PlayerMove();
+Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
 LOCAL valleyX:=0, valleyY:=0; rating:=1;
-LOCAL playerX:=0, playerY:=0;
+LOCAL playerX:=0, playerY:=0; enteredAt:=0;
 LOCAL treasure:=0, experience:=5, turns:=0;
 LOCAL strength:=26, psi:=24, stamina:=150;
 LOCAL hasAmulet:=0, amuletStones:=0, hasHelm:=0;
@@ -37,7 +37,7 @@ LOCAL ratings:={"MONSTER FOOD", "PEASANT", "CADET", "CANNON FODDER", "PATH WALKE
   "DRAGON SLAYER", "KNIGHT OF THE VALLEY", "MASTER OF COMBAT",
   "DOMINATOR", "PRINCE OF THE VALLEY", "GUARDIAN", "WAR LORD",
   "DEMON KILLER", "LORD OF THE VALLEY", "MASTER OF DESTINY"};
-LOCAL ratingKey:=50;
+LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
 
 Symb()
 BEGIN
@@ -111,11 +111,33 @@ END;
 
 PlayerMove(move)
 BEGIN
+  LOCAL dir, newX, newY, newItem;
   IF move == ratingKey THEN
     ShowRating();
     RETURN 0;
   END;
+  dir:=DirForMove(move);
+  newX:=playerX+dir(1);
+  newY:=playerY+dir(2);
+  newItem:=currentMap(newY, newX);
+  turns:=turns+1;
+  playerX:=newX;
+  playerY:=newY;
   RETURN 0;
+END;
+
+DirForMove(move)
+BEGIN
+  LOCAL dx, dy;
+  IF move < 32 OR move == 35 OR move == 36 OR move == 40 OR move == 41 OR move > 44 THEN
+    move:=38;
+  END;
+  IF move > 39 THEN move:=move-2; END;
+  IF move > 34 THEN move:=move-2; END;
+  move:=move-32;
+  dx:=(move MOD 3) - 1;
+  dy:=IP(move / 3) - 1;
+  RETURN {dx, dy};
 END;
 
 SetupPlayer()
@@ -161,9 +183,9 @@ ReadName()
 BEGIN
   LOCAL name:="", key;
   key:=GETKEY;
-  WHILE key <> 30 OR SIZE(name) == 0 DO
+  WHILE key <> enterKey OR SIZE(name) == 0 DO
     IF key == -1 THEN Delay(10); key:=GETKEY; CONTINUE; END;
-    IF key == 19 AND SIZE(name) > 0 THEN
+    IF key == deleteKey AND SIZE(name) > 0 THEN
       IF SIZE(name) == 1 THEN
         name:="";
       ELSE
@@ -334,7 +356,6 @@ END;
 
 ShowMap(map)
 BEGIN
-  ClrMap();
   MsgsAt(0, 0, map);
 END;
 
