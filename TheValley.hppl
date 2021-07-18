@@ -5,7 +5,7 @@ END;
 
 LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
-InitPlayer(); ReadName(); ReadType();
+InitPlayer(); ReadName(); ReadType(); Get(); CombatGet();
 Play(); Message(); MsgsAt(); MsgAt();
 ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating();
@@ -39,6 +39,7 @@ LOCAL ratings:={"MONSTER FOOD", "PEASANT", "CADET", "CANNON FODDER", "PATH WALKE
 
 Symb()
 BEGIN
+  Play();
 END;
 SymbSetup()
 BEGIN
@@ -52,35 +53,16 @@ BEGIN
 END;
 Num()
 BEGIN
+  Play();
 END;
 NumSetup()
 BEGIN
 END;
 
-VIEW "Help", START()
+START()
 BEGIN
   LoadGfx();
   STARTVIEW(6, 1);
-END;
-
-VIEW "Light Theme", LightTheme()
-BEGIN
-  IF diaplayTheme == 1 THEN
-    INVERT_P(G0);
-    INVERT_P(G1);
-  END;
-  diaplayTheme:=0;
-  Play();
-END;
-
-VIEW "Dark Theme", DarkTheme()
-BEGIN
-  IF diaplayTheme == 0 THEN
-    INVERT_P(G0);
-    INVERT_P(G1);
-  END;
-  diaplayTheme:=1;
-  Play();
 END;
 
 Play()
@@ -361,6 +343,30 @@ BEGIN
     idx:=idx+1;
   END;
   Message(250, messages);
+END;
+
+Get()
+BEGIN
+  LOCAL key:=-1;
+  WHILE key == -1 DO
+    key:=GETKEY;
+    Delay(10);
+  END;
+  RETURN key;
+END;
+
+CombatGet()
+BEGIN
+  LOCAL key:=1, s;
+  WHILE key <> -1 DO
+    key:=GETKEY;
+  END;
+  s:=TICKS;
+  WHILE (TICKS - s) < 500 DO
+    key:=GETKEY;
+    IF key <> -1 THEN BREAK; END;
+  END;
+  RETURN key;
 END;
 
 Message(t, messages)
