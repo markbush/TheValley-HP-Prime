@@ -11,7 +11,7 @@ ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
-IsEntry(); IsExit();
+IsEntry(); IsExit(); HandleStairs();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
 CreateLair(); CreateTemple();
 SceneMap();
@@ -29,7 +29,7 @@ LOCAL vBorder:=97, castle:=98, pathUp:=99, pathDown:=100, wood:=101, tree:=102;
 LOCAL swamp:=103, tower:=104, player:=105, wall:=106, building:=107, stairs:=108;
 LOCAL door:=109, sBorder:=110, lake:=111, playerLake:=112, special:=42, tuft:=45;
 LOCAL currentMap:={}; scenes:={};
-LOCAL needPlayer:=1, playerType:=6, playerName:="NOBODY";
+LOCAL needGfx:=1, needPlayer:=1, playerType:=6, playerName:="NOBODY";
 LOCAL psiGain:=0.5, physicalGain:=1.25, maxStamina:=50, maxStrength:=50, maxPsi:=50;
 LOCAL playerTypes:={{"WIZARD", 2.0, 0.5, 22, 28, 100, 66, 777},
   {"THINKER", 1.5, 0.75, 24, 26, 113, 72, 241},
@@ -53,7 +53,7 @@ LOCAL lakePos:={{2, 0}, {3, 0},
   {4, 6}};
 LOCAL wallOffsets:={4,7,3,6,4,4,6,5,3,6,0,3,8,4,3,5,5,3,8,3,4,5,0,6,3,6,4,6,4,7,4,3};
 LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
-LOCAL yKey:=42, nKey:=28;
+LOCAL yKey:=42, nKey:=28, uKey:=37, dKey:=17;
 
 Symb()
 BEGIN
@@ -79,12 +79,14 @@ END;
 
 START()
 BEGIN
-  LoadGfx();
   STARTVIEW(6, 1);
 END;
 
 Play()
 BEGIN
+  IF needGfx THEN
+    LoadGfx();
+  END;
   IF needPlayer THEN
     SetupPlayer();
     SetupValley();
@@ -154,9 +156,15 @@ BEGIN
     ELSE
       turns:=turns-1;
       stamina:=stamina-10;
-    Message(100, {"THE WAY IS BARRED"});
-    RETURN 0;
+      Message(100, {"THE WAY IS BARRED"});
+      RETURN 0;
     END;
+  END;
+  IF newItem == stairs THEN
+    playerX:=newX;
+    playerY:=newY;
+    HandleStairs();
+    RETURN 0;
   END;
   playerX:=newX;
   playerY:=newY;
@@ -221,6 +229,33 @@ END;
 IsExit(newItem)
 BEGIN
   RETURN POS({door, sBorder}, newItem);
+END;
+
+HandleStairs()
+BEGIN
+  LOCAL ans, notMoved:=1, x, y;
+  ShowGame();
+  WHILE notMoved DO
+    ClrMsg();
+    MsgAt(0, 21, "A STAIRWAY...UP OR DOWN ?");
+    ans:=GetAns({uKey, dKey});
+    CASE
+      IF (ans == uKey) AND (level < 7) THEN
+        PushScene();
+        CreateTower(level+1);
+        notMoved:=0;
+      END;
+      IF (ans == dKey) AND (level > 2) THEN
+        x:=playerX; y:=playerY;
+        PopScene();
+        playerX:=x; playerY:=y;
+        buildingType:=inTower;
+        notMoved:=0;
+      END;
+      DEFAULT
+        Message(110, {"THESE STAIRS ARE BLOCKED "});
+    END;
+  END;
 END;
 
 PushScene()
@@ -475,6 +510,9 @@ BEGIN
   level:=7;
   CreateBuilding();
   currentMap(15, 7):=door;
+  playerX:=7;
+  playerY:=14;
+  currentMap(playerY, playerX):=space;
 END;
 
 CreateTemple()
@@ -483,6 +521,9 @@ BEGIN
   level:=6;
   CreateBuilding();
   currentMap(15, 7):=door;
+  playerX:=7;
+  playerY:=14;
+  currentMap(playerY, playerX):=space;
 END;
 
 CreateBuilding()
@@ -563,28 +604,28 @@ BEGIN
       currentMap(y, x):=special;
     END;
   END;
-  playerX:=7;
-  playerY:=14;
-  currentMap(14, 7):=space;
 END;
 
 CreateTower(newLevel)
 BEGIN
   buildingType:=inTower;
   level:=newLevel;
+  CreateBuilding();
   IF (level MOD 2) == 0 THEN
-    currentMap(13, 3):=stairs;
+    currentMap(14, 4):=stairs;
     playerX:=22;
     playerY:=2;
   ELSE
-    currentMap(22, 2):=stairs;
-    playerX:=22;
-    playerY:=2;
+    currentMap(2, 22):=stairs;
+    playerX:=4;
+    playerY:=14;
   END;
-  CreateBuilding();
   IF level == 2 THEN
     currentMap(15, 7):=door;
+    playerX:=7;
+    playerY:=14;
   END;
+  currentMap(playerY, playerX):=space;
 END;
 
 SceneMap(fill)
@@ -629,6 +670,7 @@ END;
 LoadGfx()
 BEGIN
   G1:=AFiles("Charset.png");
+  needGfx:=0;
   IF diaplayTheme == 1 THEN
     INVERT_P(G1);
   END;
@@ -636,7 +678,7 @@ END;
 
 ShowGame()
 BEGIN
-  ShowMap(currentMap);
+  ShowMap();
   ShowPlayer();
   ShowLabels();
   ShowScores();
@@ -653,9 +695,9 @@ BEGIN
   MsgAt(playerX-1, playerY-1, {player});
 END;
 
-ShowMap(map)
+ShowMap()
 BEGIN
-  MsgsAt(0, 0, map);
+  MsgsAt(0, 0, currentMap);
   CASE
     IF buildingType == inLair THEN
       MsgsAt(25, 3, {" VOUNIM'S ", "   LAIR   "});
