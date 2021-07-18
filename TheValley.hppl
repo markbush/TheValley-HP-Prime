@@ -5,13 +5,14 @@ END;
 
 LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
-InitPlayer(); ReadName(); ReadType(); Get(); CombatGet(); GetAns();
+InitPlayer(); ReadName(); ReadType(); GetChar(); CombatGet(); GetAns();
 Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
-IsEntry(); IsExit(); HandleStairs();
+IsEntry(); IsExit(); HandleStairs(); MaybeDie(); SpecialFind();
+UpdateTreasure();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
 CreateLair(); CreateTemple();
 SceneMap();
@@ -92,6 +93,7 @@ BEGIN
     SetupValley();
   END;
   PlayLoop();
+  needPlayer:=1;
 END;
 
 PlayLoop()
@@ -107,10 +109,10 @@ BEGIN
     ELSE
       MsgAt(0, 21, "YOUR MOVE...WHICH DIRECTION ?");
     END;
-    move:=Get();
+    move:=GetChar();
     ClrMsg();
     IF move < 14 THEN
-      shouldQuit:=HandleSpecial();
+      shouldQuit:=HandleSpecial(move);
     ELSE
       shouldQuit:=PlayerMove(move);
     END;
@@ -166,8 +168,20 @@ BEGIN
     HandleStairs();
     RETURN 0;
   END;
+  IF newItem == lake THEN
+    stamina:=stamina-20;
+    IF stamina <= 0 THEN
+      IF MaybeDie() THEN RETURN 1; END;
+    END;
+  END;
   playerX:=newX;
   playerY:=newY;
+  ShowGame();
+  IF newItem == special THEN
+    SpecialFind();
+    Delay(80);
+    RETURN 0;
+  END;
   RETURN 0;
 END;
 
@@ -205,7 +219,7 @@ BEGIN
     RETURN 0;
   END;
   ClrScrn();
-  MsgAt(0, 0, "DO YOU WISH TO SAVE "+playerName+" ?");
+  MsgAt(0, 1, "DO YOU WISH TO SAVE "+playerName+" ?");
   key:=GetAns({yKey, nKey});
   IF key == yKey THEN
     SavePlayer();
@@ -256,6 +270,72 @@ BEGIN
         Message(110, {"THESE STAIRS ARE BLOCKED "});
     END;
   END;
+END;
+
+MaybeDie()
+BEGIN
+  stamina:=0;
+  strength:=0;
+  psi:=0;
+  ShowGame();
+  IF amuletStones == 6 THEN
+    stamina:=150;
+    strength:=30;
+    psi:=30;
+    treasure:=0;
+    hasAmulet:=0;
+    amuletStones:=0;
+    Message(150, {"ALARIAN'S AMULET PROTECTS THY SOUL", "  LIVE AGAIN  "});
+    RETURN 0;
+  ELSE
+    Message(300, {"         OH WHAT A FRAIL SHELL", "          IS THIS THAT WE CALL MAN"});
+    RETURN 1;
+  END;
+END;
+
+SpecialFind()
+BEGIN
+  LOCAL rnd;
+  rnd:=RANDOM;
+  currentMap(playerY, playerX):=space;
+  CASE
+    IF (buildingType == inLair) AND (rnd > 0.95) AND (amuletStones == 6) AND (NOT hasHelm) AND (rating > 25) THEN
+      MsgAt(0, 21, "YOU FIND THE HELM OF EVANNA !");
+      hasHelm:=1;
+      UpdateTreasure();
+    END;
+    IF (buildingType == inTemple) AND (rnd > 0.85) AND (NOT hasAmulet) THEN
+      MsgAt(0, 21, "THE AMULET OF ALARIAN...EMPTY...");
+      hasAmulet:=1;
+      UpdateTreasure();
+    END;
+    IF (buildingType == inTower) AND (rnd > 0.7) AND hasAmulet AND (amuletStones < 6) AND (level > amuletStones) THEN
+      MsgAt(0, 21, "AN AMULET STONE...");
+      Delay(60);
+      IF rnd > 0.85 THEN
+        MsgAt(0, 22, "...BUT THE WRONG ONE !");
+      ELSE
+        MsgAt(0, 22, "...THE STONE FITS !");
+        amuletStones:=amuletStones+1;
+        UpdateTreasure();
+      END;
+    END;
+    IF rnd > 0.43 THEN
+      MsgAt(0, 21, "A WORTHLESS BAUBLE");
+    END;
+    DEFAULT
+      MsgAt(0, 21, "A PRECIOUS STONE !");
+      UpdateTreasure();
+  END;
+END;
+
+UpdateTreasure()
+BEGIN
+  LOCAL factor;
+  factor:=amuletStones;
+  IF hasAmulet THEN factor:=factor+1; END;
+  IF hasHelm THEN factor:=factor+1; END;
+  treasure:=treasure + (100 * (factor + level));
 END;
 
 PushScene()
@@ -755,7 +835,7 @@ BEGIN
   Message(250, messages);
 END;
 
-Get()
+GetChar()
 BEGIN
   LOCAL key:=-1;
   WHILE key == -1 DO
@@ -783,7 +863,7 @@ GetAns(options)
 BEGIN
   LOCAL key:=-1;
   WHILE POS(options, key) == 0 DO
-    key:=Get();
+    key:=GetChar();
   END;
   RETURN key;
 END;
