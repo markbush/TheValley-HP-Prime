@@ -7,26 +7,28 @@ LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType(); Get(); CombatGet(); GetAns();
 Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
-ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
+ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
 IsEntry(); IsExit();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
+CreateLair(); CreateTemple();
 SceneMap();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
-LOCAL valleyX:=0, valleyY:=0; rating:=1;
+LOCAL rating:=1;
 LOCAL playerX:=0, playerY:=0; enteredAt:=0;
-LOCAL currentItem:=-1, level:=1;
+LOCAL currentItem:=-1, level:=1, inWoods:=0, buildingType:=0;
+LOCAL inLair:=1, inTemple:=2, inTower:=3;
 LOCAL treasure:=0, experience:=5, turns:=0;
 LOCAL strength:=26, psi:=24, stamina:=150;
 LOCAL hasAmulet:=0, amuletStones:=0, hasHelm:=0;
 LOCAL space:=32;
 LOCAL vBorder:=97, castle:=98, pathUp:=99, pathDown:=100, wood:=101, tree:=102;
 LOCAL swamp:=103, tower:=104, player:=105, wall:=106, building:=107, stairs:=108;
-LOCAL door:=109, sBorder:=110, lake:=111, playerLake:=112, special:=113, tuft:=114;
-LOCAL valleyMap:={};  currentMap:={}; scenes:={};
+LOCAL door:=109, sBorder:=110, lake:=111, playerLake:=112, special:=42, tuft:=45;
+LOCAL currentMap:={}; scenes:={};
 LOCAL needPlayer:=1, playerType:=6, playerName:="NOBODY";
 LOCAL psiGain:=0.5, physicalGain:=1.25, maxStamina:=50, maxStrength:=50, maxPsi:=50;
 LOCAL playerTypes:={{"WIZARD", 2.0, 0.5, 22, 28, 100, 66, 777},
@@ -49,6 +51,7 @@ LOCAL lakePos:={{2, 0}, {3, 0},
   {1, 4}, {2, 4}, {3, 4}, {4, 4}, {6, 4}, {7, 4},
   {3, 5}, {4, 5},
   {4, 6}};
+LOCAL wallOffsets:={4,7,3,6,4,4,6,5,3,6,0,3,8,4,3,5,5,3,8,3,4,5,0,6,3,6,4,6,4,7,4,3};
 LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
 LOCAL yKey:=42, nKey:=28;
 
@@ -86,9 +89,6 @@ BEGIN
     SetupPlayer();
     SetupValley();
   END;
-  playerX:=valleyX;
-  playerY:=valleyY;
-  currentMap:=valleyMap;
   PlayLoop();
 END;
 
@@ -226,7 +226,7 @@ END;
 PushScene()
 BEGIN
   LOCAL newIdx:=SIZE(scenes)+1;
-  scenes(newIdx):={currentMap, playerX, playerY, level};
+  scenes(newIdx):={currentMap, playerX, playerY, level, inWoods};
 END;
 
 PopScene()
@@ -238,11 +238,14 @@ BEGIN
   playerX:=entry(2);
   playerY:=entry(3);
   level:=entry(4);
+  inWoods:=entry(5);
+  buildingType:=0;
   IF numScenes == 1 THEN
     scenes:={};
   ELSE
     scenes:=SUB(scenes, 1, numScenes-1);
   END;
+  ClrMap();
 END;
 
 SetupPlayer()
@@ -373,7 +376,7 @@ SetupValley()
 BEGIN
   LOCAL idx, borderRow, innerRow, x, y, dir;
   LOCAL element, elem1, elem2, prev, scenes;
-  valleyMap:={};
+  currentMap:={};
   borderRow:={};
   FOR idx FROM 1 TO 40 DO
     borderRow(idx):=vBorder;
@@ -383,14 +386,14 @@ BEGIN
     innerRow(idx):=space;
   END;
   innerRow(40):=vBorder;
-  valleyMap(1):=borderRow;
+  currentMap(1):=borderRow;
   FOR idx FROM 2 TO 13 DO
-    valleyMap(idx):=innerRow;
+    currentMap(idx):=innerRow;
   END;
-  valleyMap(14):=borderRow;
+  currentMap(14):=borderRow;
   x:=2; y:=RANDINT(3, 12);
-  valleyX:=2; valleyY:= y;
-  valleyMap(y, x):=castle;
+  playerX:=2; playerY:= y;
+  currentMap(y, x):=castle;
   prev:=castle;
   FOR x FROM 3 TO 38 DO
     dir:=RANDINT();
@@ -410,30 +413,30 @@ BEGIN
       DEFAULT IF element == pathUp THEN y:=y-1; END;
     END;
     prev:=element;
-    valleyMap(y, x):=element;
+    currentMap(y, x):=element;
   END;
   IF element == pathDown THEN y:=y+1; ELSE y:=y-1; END;
   IF y > 13 THEN y:=y-1; END;
   IF y < 2 THEN y:=y+1; END;
-  valleyMap(y, 39):=castle;
+  currentMap(y, 39):=castle;
   scenes:={wood, wood, swamp, swamp};
   FOR idx FROM 1 TO SIZE(scenes) DO
     elem1:=-1; elem2:=-1;
     WHILE elem1 <> space OR elem2 <> space DO
       x:=RANDINT(2, 39);
       y:=RANDINT(2, 13);
-      elem1:=valleyMap(y, x);
-      elem2:=valleyMap(y, x+1);
+      elem1:=currentMap(y, x);
+      elem2:=currentMap(y, x+1);
     END;
-    valleyMap(y, x):=scenes(idx);
-    valleyMap(y, x+1):=scenes(idx);
+    currentMap(y, x):=scenes(idx);
+    currentMap(y, x+1):=scenes(idx);
   END;
   WHILE element <> space DO
     x:=RANDINT(2, 39);
     y:=RANDINT(2, 13);
-    element:=valleyMap(y, x);
+    element:=currentMap(y, x);
   END;
-  valleyMap(y, x):=tower;
+  currentMap(y, x):=tower;
 END;
 
 NewSceneFor(item)
@@ -441,30 +444,90 @@ BEGIN
   CASE
     IF item == wood THEN CreateWood(); END;
     IF item == swamp THEN CreateSwamp(); END;
-    IF item == building THEN CreateBuilding(); END;
-    IF item == tower THEN CreateTower(); END;
+    IF item == building THEN
+      IF inWoods THEN
+        CreateLair();
+      ELSE
+        CreateTemple();
+      END;
+    END;
+    IF item == tower THEN CreateTower(2); END;
   END;
 END;
 
 CreateWood()
 BEGIN
   level:=3;
+  inWoods:=1;
   SceneMap(tree);
 END;
 
 CreateSwamp()
 BEGIN
+  level:=2;
+  inWoods:=0;
+  SceneMap(tuft);
+END;
 
+CreateLair()
+BEGIN
+  buildingType:=inLair;
+  level:=7;
+  CreateBuilding();
+  currentMap(15, 7):=door;
+END;
+
+CreateTemple()
+BEGIN
+  buildingType:=inTemple;
+  level:=6;
+  CreateBuilding();
+  currentMap(15, 7):=door;
 END;
 
 CreateBuilding()
 BEGIN
-
+  LOCAL borderRow, innerRow, row, idx;
+  currentMap:={};
+  borderRow:={space, space};
+  FOR idx FROM 3 TO 23 DO
+    borderRow(idx):=wall;
+  END;
+  FOR idx FROM 24 TO 40 DO
+    borderRow(idx):=space;
+  END;
+  currentMap(1):=borderRow;
+  innerRow:={space, space, wall};
+  FOR idx FROM 4 TO 40 DO
+    innerRow(idx):=space;
+  END;
+  innerRow(23):=wall;
+  FOR idx FROM 2 TO 14 DO
+    currentMap(idx):=innerRow;
+  END;
+  currentMap(15):=borderRow;
+  playerX:=7;
+  playerY:=14;
+  currentMap(13, 6):=space;
 END;
 
-CreateTower()
+CreateTower(newLevel)
 BEGIN
-
+  buildingType:=inTower;
+  level:=newLevel;
+  IF (level MOD 2) == 0 THEN
+    currentMap(13, 3):=stairs;
+    playerX:=22;
+    playerY:=2;
+  ELSE
+    currentMap(22, 2):=stairs;
+    playerX:=22;
+    playerY:=2;
+  END;
+  CreateBuilding();
+  IF level == 2 THEN
+    currentMap(15, 7):=door;
+  END;
 END;
 
 SceneMap(fill)
@@ -481,13 +544,13 @@ BEGIN
   END;
   innerRow(40):=sBorder;
   currentMap(1):=borderRow;
-  FOR idx FROM 2 TO 13 DO
+  FOR idx FROM 2 TO 14 DO
     currentMap(idx):=innerRow;
   END;
-  currentMap(14):=borderRow;
+  currentMap(15):=borderRow;
   FOR idx FROM 1 TO 200 DO
     x:=RANDINT(2, 39);
-    y:=RANDINT(2, 13);
+    y:=RANDINT(2, 14);
     currentMap(y, x):=fill;
   END;
   lakeX:=RANDINT(2, 30);
@@ -501,8 +564,8 @@ BEGIN
   currentMap(lakeY+2, lakeX+3):=space;
   currentMap(lakeY+3, lakeX+3):=space;
   currentMap(lakeY+3, lakeX+2):=building;
-  playerX:=19;
-  playerY:=13;
+  playerX:=20;
+  playerY:=14;
   currentMap(playerY, playerX):=space;
 END;
 
@@ -523,11 +586,6 @@ BEGIN
   ShowPlayerLoc();
 END;
 
-ShowValley()
-BEGIN
-  ShowMap(valleyMap);
-END;
-
 ShowPlayer()
 BEGIN
   MsgAt(0, 15, playerName+"    "+playerTypes(playerType, 1));
@@ -541,6 +599,17 @@ END;
 ShowMap(map)
 BEGIN
   MsgsAt(0, 0, map);
+  CASE
+    IF buildingType == inLair THEN
+      MsgsAt(25, 3, {" VOUNIM'S ", "   LAIR   "});
+    END;
+    IF buildingType == inTemple THEN
+      MsgsAt(24, 3, {"THE TEMPLE OF", "  Y'NAGIOTH  "});
+    END;
+    IF buildingType == inTower THEN
+      MsgsAt(24, 4, {"THE BLACK TOWER", "   OF ZAEXON", "    FLOOR "+level+"  "});
+    END;
+  END;
 END;
 
 ShowLabels()
@@ -654,7 +723,7 @@ END;
 
 ClrMap()
 BEGIN
-  ClrAt(0, 0, 40, 14);
+  ClrAt(0, 0, 40, 15);
 END;
 
 ClrMsg()
