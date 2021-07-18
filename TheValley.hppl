@@ -10,12 +10,15 @@ Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
 ShowValley(); ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
-IsBlocked(); WillQuit(); NotAllowed();
+IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
+IsEntry();
+NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
+SceneMap();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
 LOCAL valleyX:=0, valleyY:=0; rating:=1;
 LOCAL playerX:=0, playerY:=0; enteredAt:=0;
-LOCAL currentItem:=-1;
+LOCAL currentItem:=-1, level:=1;
 LOCAL treasure:=0, experience:=5, turns:=0;
 LOCAL strength:=26, psi:=24, stamina:=150;
 LOCAL hasAmulet:=0, amuletStones:=0, hasHelm:=0;
@@ -23,7 +26,7 @@ LOCAL space:=32;
 LOCAL vBorder:=97, castle:=98, pathUp:=99, pathDown:=100, wood:=101, tree:=102;
 LOCAL swamp:=103, tower:=104, player:=105, wall:=106, building:=107, stairs:=108;
 LOCAL door:=109, sBorder:=110, lake:=111, playerLake:=112, special:=113, tuft:=114;
-LOCAL valleyMap:={};  currentMap:={};
+LOCAL valleyMap:={};  currentMap:={}; scenes:={};
 LOCAL needPlayer:=1, playerType:=6, playerName:="NOBODY";
 LOCAL psiGain:=0.5, physicalGain:=1.25, maxStamina:=50, maxStrength:=50, maxPsi:=50;
 LOCAL playerTypes:={{"WIZARD", 2.0, 0.5, 22, 28, 100, 66, 777},
@@ -39,6 +42,13 @@ LOCAL ratings:={"MONSTER FOOD", "PEASANT", "CADET", "CANNON FODDER", "PATH WALKE
   "DRAGON SLAYER", "KNIGHT OF THE VALLEY", "MASTER OF COMBAT",
   "DOMINATOR", "PRINCE OF THE VALLEY", "GUARDIAN", "WAR LORD",
   "DEMON KILLER", "LORD OF THE VALLEY", "MASTER OF DESTINY"};
+LOCAL lakePos:={{2, 0}, {3, 0},
+  {1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 1},
+  {0, 2}, {1, 2}, {4, 2}, {5, 2}, {6, 2},
+  {0, 3}, {1, 3}, {4, 3}, {5, 3}, {6, 3},
+  {1, 4}, {2, 4}, {3, 4}, {4, 4}, {6, 4}, {7, 4},
+  {3, 5}, {4, 5},
+  {4, 6}};
 LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
 LOCAL yKey:=42, nKey:=28;
 
@@ -96,6 +106,7 @@ BEGIN
       MsgAt(0, 21, "YOUR MOVE...WHICH DIRECTION ?");
     END;
     move:=Get();
+    ClrMsg();
     IF move < 14 THEN
       shouldQuit:=HandleSpecial();
     ELSE
@@ -128,6 +139,12 @@ BEGIN
     turns:=turns-1;
     stamina:=stamina-10;
     Message(100, {"YOU CANNOT ENTER THIS WAY..."});
+    RETURN 0;
+  END;
+  IF IsEntry(newItem) THEN
+    enteredAt:=turns;
+    PushScene();
+    NewSceneFor(newItem);
     RETURN 0;
   END;
   playerX:=newX;
@@ -183,6 +200,33 @@ NotAllowed(newItem)
 BEGIN
   IF currentItem == lake AND newItem == building THEN RETURN 1; END;
   RETURN 0;
+END;
+
+IsEntry(newItem)
+BEGIN
+  RETURN POS({wood, swamp, building, tower}, newItem);
+END;
+
+PushScene()
+BEGIN
+  LOCAL newIdx:=SIZE(scenes)+1;
+  scenes(newIdx):={currentMap, playerX, playerY, level};
+END;
+
+PopScene()
+BEGIN
+  LOCAL numScenes:=SIZE(scenes), entry;
+  IF numScenes == 0 THEN RETURN; END;
+  entry:=scenes(numScenes);
+  currentMap:=entry(1);
+  playerX:=entry(2);
+  playerY:=entry(3);
+  level:=entry(4);
+  IF numScenes == 1 THEN
+    scenes:={};
+  ELSE
+    scenes:=SUB(scenes, 1, numScenes-1);
+  END;
 END;
 
 SetupPlayer()
@@ -374,6 +418,76 @@ BEGIN
     element:=valleyMap(y, x);
   END;
   valleyMap(y, x):=tower;
+END;
+
+NewSceneFor(item)
+BEGIN
+  CASE
+    IF item == wood THEN CreateWood(); END;
+    IF item == swamp THEN CreateSwamp(); END;
+    IF item == building THEN CreateBuilding(); END;
+    IF item == tower THEN CreateTower(); END;
+  END;
+END;
+
+CreateWood()
+BEGIN
+  level:=3;
+  SceneMap(tree);
+END;
+
+CreateSwamp()
+BEGIN
+
+END;
+
+CreateBuilding()
+BEGIN
+
+END;
+
+CreateTower()
+BEGIN
+
+END;
+
+SceneMap(fill)
+BEGIN
+  LOCAL borderRow, innerRow, idx, x, y, lakeX, lakeY;
+  currentMap:={};
+  borderRow:={};
+  FOR idx FROM 1 TO 40 DO
+    borderRow(idx):=sBorder;
+  END;
+  innerRow:={sBorder};
+  FOR idx FROM 2 TO 39 DO
+    innerRow(idx):=space;
+  END;
+  innerRow(40):=sBorder;
+  currentMap(1):=borderRow;
+  FOR idx FROM 2 TO 13 DO
+    currentMap(idx):=innerRow;
+  END;
+  currentMap(14):=borderRow;
+  FOR idx FROM 1 TO 200 DO
+    x:=RANDINT(2, 39);
+    y:=RANDINT(2, 13);
+    currentMap(y, x):=fill;
+  END;
+  lakeX:=RANDINT(2, 30);
+  lakeY:=RANDINT(2, 6);
+  FOR idx FROM 1 TO SIZE(lakePos) DO
+    x:=lakeX+lakePos(idx, 1);
+    y:=lakeY+lakePos(idx, 2);
+    currentMap(y, x):=lake;
+  END;
+  currentMap(lakeY+2, lakeX+2):=space;
+  currentMap(lakeY+2, lakeX+3):=space;
+  currentMap(lakeY+3, lakeX+3):=space;
+  currentMap(lakeY+3, lakeX+2):=building;
+  playerX:=19;
+  playerY:=13;
+  currentMap(playerY, playerX):=space;
 END;
 
 LoadGfx()
