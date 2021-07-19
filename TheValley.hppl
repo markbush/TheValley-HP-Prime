@@ -622,7 +622,37 @@ END;
 
 CrispIt()
 BEGIN
-  RETURN 5;
+  LOCAL damage;
+  IF (psi < 77) OR (experience < 5000) THEN
+    RETURN 4;
+  END;
+  stamina:=stamina-20;
+  IF stamina <= 0 THEN RETURN 5; END;
+  Msgs({"WITH THE MIGHT OF MY SWORD I SMITE THEE", "WITH THE POWER OF MY SPELL I CURSE THEE", "BURN YE SPAWN OF HELL AND SUFFER..."});
+  DelayWipeUpdate(240);
+  Message(80, {"A BOLT OF ENERGY LASHES AT THE BEAST..."});
+  IF RANDOM > (psi / 780) * (5 - psiGain) THEN
+    Msgs({"MISSED IT !"});
+    RETURN 2;
+  END;
+  damage:=IP((strength + psi * RANDOM) - (10 * monsterPsi * RANDOM));
+  IF damage <= 0 THEN RETURN 7; END;
+  IF monsterStrength == 0 THEN
+    monsterPsi:=monsterPsi - damage;
+  ELSE
+    monsterStrength:=monsterStrength - damage;
+    IF damage > 10 THEN
+      monsterPsi:=IP(monsterPsi - (damage / 3));
+    END;
+  END;
+  Msgs({"IT STRIKES HOME CAUSING "+damage+" DAMAGE !"});
+  IF (monsterStrength + monsterPsi) <= 0 THEN
+    Msgs({"IT STRIKES HOME CAUSING "+damage+" DAMAGE !", "THE BEAST DIES SCREAMING !"});
+    experience:=experience + monsterExperience;
+    RETURN 1;
+  END;
+  Delay(80);
+  RETURN 2;
 END;
 
 PhysicalAttack(key)
