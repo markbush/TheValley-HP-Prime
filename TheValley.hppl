@@ -6,7 +6,7 @@ END;
 LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType(); GetChar(); CombatGet(); GetAns();
-Play(); PlayLoop(); Message(); MsgsAt(); MsgAt();
+Play(); PlayLoop(); Message(); MsgsAt(); MsgAt(); MapText();
 ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame(); OnPath(); InLake();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
@@ -114,13 +114,14 @@ BEGIN
     SetupValley();
   END;
   PlayLoop();
-  needPlayer:=1;
 END;
 
 PlayLoop()
 BEGIN
   LOCAL move, shouldQuit;
   ClrScrn();
+  ShowPlayer();
+  ShowLabels();
   WHILE 1 DO
     ShowGame();
     currentItem:=currentMap(playerY, playerX);
@@ -208,7 +209,6 @@ BEGIN
   playerX:=newX;
   playerY:=newY;
   IF OnPath(newItem) THEN
-    Delay(5);
     RETURN 0;
   END;
   ShowGame();
@@ -259,7 +259,6 @@ BEGIN
   LOCAL key;
   IF strength < 20 THEN strength:=20; END;
   ShowGame();
-  ClrMsg();
   MsgsAt(0, 21, {"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
   key:=GetAns({yKey, nKey});
   ShowRating();
@@ -300,9 +299,9 @@ BEGIN
   LOCAL ans, notMoved:=1, x, y;
   ShowGame();
   WHILE notMoved DO
-    ClrMsg();
     MsgAt(0, 21, "A STAIRWAY...UP OR DOWN ?");
     ans:=GetAns({uKey, dKey});
+    ClrMsg();
     CASE
       IF (ans == uKey) AND (level < 7) THEN
         PushScene();
@@ -471,7 +470,6 @@ BEGIN
   ELSE
     scenes:=SUB(scenes, 1, numScenes-1);
   END;
-  ClrMap();
 END;
 
 SetupPlayer()
@@ -600,7 +598,7 @@ END;
 
 SetupValley()
 BEGIN
-  LOCAL idx, borderRow, innerRow, x, y, dir;
+  LOCAL idx, borderRow, innerRow, bottomRow, x, y, dir;
   LOCAL element, elem1, elem2, prev, scenes;
   currentMap:={};
   borderRow:={};
@@ -617,6 +615,11 @@ BEGIN
     currentMap(idx):=innerRow;
   END;
   currentMap(14):=borderRow;
+  bottomRow:={};
+  FOR idx FROM 1 TO 40 DO
+    bottomRow(idx):=space;
+  END;
+  currentMap(15):=bottomRow;
   x:=2; y:=RANDINT(3, 12);
   playerX:=2; playerY:= y;
   currentMap(y, x):=castle;
@@ -707,6 +710,8 @@ BEGIN
   playerX:=7;
   playerY:=14;
   currentMap(playerY, playerX):=space;
+  MapText(26, 3, "VOUNIM'S ");
+  MapText(28, 4, "LAIR   ");
 END;
 
 CreateTemple()
@@ -719,6 +724,8 @@ BEGIN
   playerX:=7;
   playerY:=14;
   currentMap(playerY, playerX):=space;
+  MapText(25, 3, "THE TEMPLE OF");
+  MapText(27, 4, "Y'NAGIOTH");
 END;
 
 CreateBuilding()
@@ -822,6 +829,9 @@ BEGIN
     playerY:=14;
   END;
   currentMap(playerY, playerX):=space;
+  MapText(25, 4, "THE BLACK TOWER");
+  MapText(28, 5, "OF ZAEXON");
+  MapText(29, 6, "FLOOR "+level);
 END;
 
 SceneMap(fill)
@@ -875,8 +885,6 @@ END;
 ShowGame()
 BEGIN
   ShowMap();
-  ShowPlayer();
-  ShowLabels();
   ShowScores();
   ShowPlayerLoc();
 END;
@@ -898,22 +906,11 @@ END;
 ShowMap()
 BEGIN
   MsgsAt(0, 0, currentMap);
-  CASE
-    IF buildingType == inLair THEN
-      MsgsAt(25, 3, {" VOUNIM'S ", "   LAIR   "});
-    END;
-    IF buildingType == inTemple THEN
-      MsgsAt(24, 3, {"THE TEMPLE OF", "  Y'NAGIOTH  "});
-    END;
-    IF buildingType == inTower THEN
-      MsgsAt(24, 4, {"THE BLACK TOWER", "   OF ZAEXON", "    FLOOR "+level+"  "});
-    END;
-  END;
 END;
 
 ShowLabels()
 BEGIN
-  ClrAt(0, 16, 40, 14);
+  ClrAt(0, 16, 40, 3);
   MsgsAt(0, 16, {"TREASURE   = ", "EXPERIENCE = ", "TURNS      = "});
   MsgsAt(21, 16, {"COMBAT STR = ", "PSI POWER  = ", "STAMINA    = "});
 END;
@@ -945,8 +942,6 @@ END;
 ShowRating()
 BEGIN
   LOCAL messages:={}, idx:=2;
-  Delay(5);
-  ClrMsg();
   messages(1):="YOUR RATING NOW BE "+STRING(rating)+" ("+ratings(rating)+")";
   IF hasHelm THEN
     messages(idx):="YOU HAVE THE HELM OF EVANNA";
@@ -990,6 +985,15 @@ BEGIN
     key:=GetChar();
   END;
   RETURN key;
+END;
+
+MapText(col, row, message)
+BEGIN
+  LOCAL idx, char;
+  FOR idx FROM 1 TO SIZE(message) DO
+    char:=message(idx);
+    currentMap(row-1, col+idx-1):=char;
+  END;
 END;
 
 Message(t, messages)
@@ -1051,5 +1055,6 @@ END;
 
 HandleSpecial(key)
 BEGIN
+  IF key == 4 THEN needPlayer:=1; END;
   RETURN 1;
 END;
