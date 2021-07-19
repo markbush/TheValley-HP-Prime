@@ -219,7 +219,7 @@ BEGIN
   ShowGame();
   IF newItem == special THEN
     SpecialFind();
-    Delay(80);
+    DelayWipeUpdate(80);
     RETURN 0;
   END;
   randomFind:=RANDOM;
@@ -230,6 +230,7 @@ BEGIN
       IF (strength <= 0) OR (stamina <= 0) THEN
         IF MaybeDie() THEN RETURN 1; END;
       END;
+      DelayWipeUpdate(80);
     END;
     IF randomFind > 0.75 THEN
       FindSelect();
@@ -368,9 +369,9 @@ BEGIN
       Msgs({"AN AMULET STONE..."});
       Delay(60);
       IF rnd > 0.85 THEN
-        MsgAt(0, 22, "...BUT THE WRONG ONE !");
+        Msgs({"AN AMULET STONE...", "...BUT THE WRONG ONE !"});
       ELSE
-        MsgAt(0, 22, "...THE STONE FITS !");
+        Msgs({"AN AMULET STONE...", "...THE STONE FITS !"});
         amuletStones:=amuletStones+1;
         UpdateTreasure();
       END;
@@ -460,13 +461,13 @@ BEGIN
     ClrMsg();
     CASE
       IF key == -1 THEN
-        Message(110, {"* TOO SLOW...TOO SLOW *"});
-        ShowScores();
+        Msgs({"* TOO SLOW...TOO SLOW *"});
+        DelayWipeUpdate(110);
       END;
       IF key == rKey THEN
-        Message(80, {"KNAVISH COWARD !"});
+        Msgs({"KNAVISH COWARD !"});
         fighting:=0;
-        ShowScores();
+        DelayWipeUpdate(80);
       END;
       IF key == aKey THEN
         monsterAttack:=0;
@@ -498,9 +499,9 @@ BEGIN
   key:=CombatGet();
   ClrMsg();
   IF key == -1 THEN
-    Message(110, {"* TOO SLOW...TOO SLOW *"});
+    Msgs({"* TOO SLOW...TOO SLOW *"});
     hasAdvantage:=0;
-    ShowScores();
+    DelayWipeUpdate(110);
     RETURN;
   END;
   IF key == sKey THEN
@@ -517,19 +518,19 @@ BEGIN
   key:=CombatGet();
   ClrMsg();
   IF key == -1 THEN
-    Message(110, {"* TOO SLOW...TOO SLOW *"});
+    Msgs({"* TOO SLOW...TOO SLOW *"});
     hasAdvantage:=0;
-    ShowScores();
+    DelayWipeUpdate(110);
     RETURN;
   END;
   IF POS(availableSpells, key) == 0 THEN
-    Message(60, {"NO SUCH SPELL...     "});
-    ShowScores();
+    Msgs({"NO SUCH SPELL...     "});
+    DelayWipeUpdate(60);
     RETURN;
   END;
   IF 4 * psi * RANDOM <= monsterPsi THEN
-    Message(60, {"NO USE, THE BEAST'S PSI SHIELDS IT"});
-    ShowScores();
+    Msgs({"NO USE, THE BEAST'S PSI SHIELDS IT"});
+    DelayWipeUpdate(60);
     RETURN;
   END;
   result:=2;
@@ -551,21 +552,21 @@ BEGIN
       DelayWipeUpdate(60);
     END;
     IF result == 4 THEN
-      Message(60, {"IT IS BEYOND YOU"});
-      ShowScores();
+      Msgs({"IT IS BEYOND YOU"});
+      DelayWipeUpdate(60);
     END;
     IF result == 5 THEN
       fighting:=0;
-      Message(110, {"THE SPELL SAPS ALL YOUR STRENGTH"});
-      ShowScores();
+      Msgs({"THE SPELL SAPS ALL YOUR STRENGTH"});
+      DelayWipeUpdate(110);
     END;
     IF result == 6 THEN
-      Message(60, {"BUT THE SPELL FAILS...!"});
-      ShowScores();
+      Msgs({"BUT THE SPELL FAILS...!"});
+      DelayWipeUpdate(60);
     END;
     IF result == 7 THEN
-      Message(60, {"NO USE, THE BEAST'S PSI SHIELDS IT"});
-      ShowScores();
+      Msgs({"NO USE, THE BEAST'S PSI SHIELDS IT"});
+      DelayWipeUpdate(60);
     END;
   END;
 END;
@@ -574,8 +575,8 @@ SleepIt()
 BEGIN
   stamina:=stamina-5;
   IF stamina <= 0 THEN RETURN 5; END;
-  Message(180, {"SLEEP YOU FOUL FIEND THAT I MAY ESCAPE", "AND PRESERVE MY MISERABLE SKIN"});
-  ShowScores();
+  Msgs({"SLEEP YOU FOUL FIEND THAT I MAY ESCAPE", "AND PRESERVE MY MISERABLE SKIN"});
+  DelayWipeUpdate(180);
   Msgs({"THE CREATURE STAGGERS..."});
   Delay(40);
   IF RANDOM < 0.5 THEN
@@ -589,7 +590,34 @@ END;
 
 PsiLance()
 BEGIN
-  RETURN 4;
+  LOCAL damageFactor, damage, experienceFactor;
+  experienceFactor:=39 * LOG(experience) / 3.14;
+  IF (monsterStrength > stamina) OR (psi < 49) OR (experience < 1000) THEN
+    RETURN 4;
+  END;
+  stamina:=stamina-10;
+  IF stamina <= 0 THEN RETURN 5; END;
+  IF monsterPsi == 0 THEN
+    Msgs({"THIS BEAST HAS NO PSI TO ATTACK"});
+    RETURN 2;
+  END;
+  Msgs({"WITH MY MIND I BATTLE THEE FOR MY LIFE"});
+  DelayWipeUpdate(120);
+  damageFactor:=RANDOM;
+  IF (damageFactor < 0.4) AND (monsterPsi > 10) THEN
+    RETURN 6;
+  END;
+  damage:=IP((((strength * 50 * damageFactor) - 5 * (monsterStrength + monsterPsi) + experienceFactor) / 50) / 4);
+  IF damage <= 0 THEN RETURN 7; END;
+  Msgs({"THE PSI-LANCE CAUSES "+(damage*2)+" DAMAGE"});
+  monsterPsi:=monsterPsi - (3 * damage);
+  IF monsterPsi < 0 THEN monsterPsi:=0; END;
+  monsterStrength:=monsterStrength - damage;
+  IF monsterStrength < 0 THEN monsterStrength:=0; END;
+  IF monsterStrength + monsterPsi > 0 THEN RETURN 2; END;
+  Msgs({"THE PSI-LANCE CAUSES "+(damage*2)+" DAMAGE", "...KILLING THE CREATURE"});
+  experience:=experience + monsterExperience;
+  RETURN 1;
 END;
 
 CrispIt()
@@ -600,14 +628,16 @@ END;
 PhysicalAttack(key)
 BEGIN
   LOCAL attackFactor, damageFactor, damage, experienceFactor;
+  experienceFactor:=39 * LOG(experience) / 3.14;
   IF monsterStrength == 0 THEN
-    Message(110, {"YOUR SWORD AVAILS YOU NOUGHT HERE"});
-    ShowScores();
+    Msgs({"YOUR SWORD AVAILS YOU NOUGHT HERE"});
+    DelayWipeUpdate(110);
     RETURN;
   END;
   stamina:=stamina-1;
   IF stamina <= 0 THEN
     Msgs({"YOU FATALLY EXHAUST YOURSELF"});
+    DelayWipeUpdate(110);
     RETURN;
   END;
   attackFactor:=RANDOM * 10;
@@ -624,16 +654,15 @@ BEGIN
     END;
   END;
   IF damageFactor == 0 THEN
-    Message(110, {"YOU MISSED IT !"});
+    Msgs({"YOU MISSED IT !"});
     hasAdvantage:=0;
-    ShowScores();
+    DelayWipeUpdate(110);
     RETURN;
   END;
   IF hasAdvantage THEN
     damage:=monsterStrength + IP(RANDOM * 9);
     hasAdvantage:=0;
   ELSE
-    experienceFactor:=39 * LOG(experience) / 3.14;
     damage:=IP((((strength * 50 * RANDOM) - (10 * monsterStrength) + experienceFactor) / 100) * damageFactor);
     IF damage < 0 THEN damage:=0; END;
     IF strength > (monsterStrength - damage) * 4 THEN
@@ -644,18 +673,18 @@ BEGIN
   Msgs({"A HIT..."});
   Delay(60);
   IF damage == 0 THEN
-    Message(110, {"A HIT...BUT...NO DAMAGE"});
+    Msgs({"A HIT...BUT...NO DAMAGE"});
     hasAdvantage:=0;
-    ShowScores();
+    DelayWipeUpdate(110);
     RETURN;
   END;
   Msgs({"A HIT..."+damage+" DAMAGE"});
   IF monsterStrength <= 0 THEN
-    Message(80, {"A HIT..."+damage+" DAMAGE", "...KILLING THE MONSTER..."});
-    experience:=experience+monsterExperience;
+    Msgs({"A HIT..."+damage+" DAMAGE", "...KILLING THE MONSTER..."});
+    experience:=experience + monsterExperience;
     hasAdvantage:=0;
     fighting:=0;
-    ShowScores();
+    DelayWipeUpdate(80);
     RETURN;
   END;
   IF hasAdvantage THEN
