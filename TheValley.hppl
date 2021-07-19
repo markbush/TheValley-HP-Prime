@@ -6,13 +6,14 @@ END;
 LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType(); GetChar(); CombatGet(); GetAns();
-Play(); PlayLoop(); Message(); MsgsAt(); MsgAt(); MapText();
+Play(); PlayLoop(); Message(); Msgs(); MsgsAt(); MsgAt(); MapText();
 ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
 ShowRating(); ShowPlayerLoc(); ShowGame(); OnPath(); InLake();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
 IsEntry(); IsExit(); HandleStairs(); MaybeDie(); SpecialFind();
 UpdateTreasure(); FindSelect(); SelectMonster(); Fight();
+MonsterAttack(); Attack(); CastSpell(); PhysicalAttack();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
 CreateLair(); CreateTemple();
 SceneMap();
@@ -73,9 +74,11 @@ LOCAL monsterTypes:={{"WOLFEN", "A", 9, 0},
   {"KRAKEN", "L", 50, 0}};
 LOCAL monster:={}, monsterOptions:="VAEGH", fireGiant:=10, balrog:=17, ringWraith:=16;
 LOCAL monsterStrength:=0, monsterPsi:=0, monsterExperience:=0, fighting:=0;
+LOCAL hasAdvantage;
 LOCAL wallOffsets:={4,7,3,6,4,4,6,5,3,6,0,3,8,4,3,5,5,3,8,3,4,5,0,6,3,6,4,6,4,7,4,3};
 LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
-LOCAL yKey:=42, nKey:=28, uKey:=37, dKey:=17;
+LOCAL escKey:=5, aKey:=14, bKey:=15, dKey:=17, hKey:=22, lKey:=26, nKey:=28;
+LOCAL rKey:=33, sKey:=34, uKey:=37, yKey:=42;
 
 Symb()
 BEGIN
@@ -127,13 +130,13 @@ BEGIN
     currentItem:=currentMap(playerY, playerX);
     stamina:=stamina+10;
     IF OnPath(currentItem) THEN
-      MsgAt(0, 21, "SAFE ON THE PATH...WHICH WAY ?");
+      Msgs({"SAFE ON THE PATH...WHICH WAY ?"});
     ELSE
-      MsgAt(0, 21, "YOUR MOVE...WHICH DIRECTION ?");
+      Msgs({"YOUR MOVE...WHICH DIRECTION ?"});
     END;
     move:=GetChar();
     ClrMsg();
-    IF move < 14 THEN
+    IF move < aKey THEN
       shouldQuit:=HandleSpecial(move);
     ELSE
       shouldQuit:=PlayerMove(move);
@@ -259,7 +262,7 @@ BEGIN
   LOCAL key;
   IF strength < 20 THEN strength:=20; END;
   ShowGame();
-  MsgsAt(0, 21, {"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
+  Msgs({"THOU ART SAFE IN A CASTLE", "WILT THOU LEAVE THE VALLEY (Y/N) ?"});
   key:=GetAns({yKey, nKey});
   ShowRating();
   IF key == nKey THEN
@@ -299,7 +302,7 @@ BEGIN
   LOCAL ans, notMoved:=1, x, y;
   ShowGame();
   WHILE notMoved DO
-    MsgAt(0, 21, "A STAIRWAY...UP OR DOWN ?");
+    Msgs({"A STAIRWAY...UP OR DOWN ?"});
     ans:=GetAns({uKey, dKey});
     ClrMsg();
     CASE
@@ -349,17 +352,17 @@ BEGIN
   currentMap(playerY, playerX):=space;
   CASE
     IF (buildingType == inLair) AND (rnd > 0.95) AND (amuletStones == 6) AND (NOT hasHelm) AND (rating > 25) THEN
-      MsgAt(0, 21, "YOU FIND THE HELM OF EVANNA !");
+      Msgs({"YOU FIND THE HELM OF EVANNA !"});
       hasHelm:=1;
       UpdateTreasure();
     END;
     IF (buildingType == inTemple) AND (rnd > 0.85) AND (NOT hasAmulet) THEN
-      MsgAt(0, 21, "THE AMULET OF ALARIAN...EMPTY...");
+      Msgs({"THE AMULET OF ALARIAN...EMPTY..."});
       hasAmulet:=1;
       UpdateTreasure();
     END;
     IF (buildingType == inTower) AND (rnd > 0.7) AND hasAmulet AND (amuletStones < 6) AND (level > amuletStones) THEN
-      MsgAt(0, 21, "AN AMULET STONE...");
+      Msgs({"AN AMULET STONE..."});
       Delay(60);
       IF rnd > 0.85 THEN
         MsgAt(0, 22, "...BUT THE WRONG ONE !");
@@ -370,10 +373,10 @@ BEGIN
       END;
     END;
     IF rnd > 0.43 THEN
-      MsgAt(0, 21, "A WORTHLESS BAUBLE");
+      Msgs({"A WORTHLESS BAUBLE"});
     END;
     DEFAULT
-      MsgAt(0, 21, "A PRECIOUS STONE !");
+      Msgs({"A PRECIOUS STONE !"});
       UpdateTreasure();
   END;
 END;
@@ -444,7 +447,139 @@ END;
 
 Fight()
 BEGIN
+  LOCAL monsterAttack:=1, key;
   fighting:=1;
+  hasAdvantage:=0;
+  ShowScores();
+  IF RANDOM >= 0.6 THEN
+    Msgs({"YOU HAVE SUPRISE...ATTACK OR RETREAT"});
+    key:=CombatGet();
+    ClrMsg();
+    CASE
+      IF key == -1 THEN
+        Message(110, {"* TOO SLOW...TOO SLOW *"});
+        ShowScores();
+      END;
+      IF key == rKey THEN
+        Message(80, {"KNAVISH COWARD !"});
+        fighting:=0;
+        ShowScores();
+      END;
+      IF key == aKey THEN
+        monsterAttack:=0;
+        Delay(30);
+      END;
+    END;
+  END;
+  WHILE fighting DO
+    IF monsterAttack THEN
+      MonsterAttack();
+      monsterAttack:=0;
+    ELSE
+      Attack();
+      IF NOT hasAdvantage THEN monsterAttack:=1; END;
+    END;
+    IF (strength <= 0) OR (stamina <= 0) THEN fighting:=0; END;
+  END;
+END;
+
+MonsterAttack()
+BEGIN
+
+END;
+
+Attack()
+BEGIN
+  LOCAL key;
+  Msgs({"*** STRIKE QUICKLY ***"});
+  key:=CombatGet();
+  ClrMsg();
+  CASE
+    IF key == -1 THEN
+      Message(110, {"* TOO SLOW...TOO SLOW *"});
+      hasAdvantage:=0;
+      ShowScores();
+    END;
+    IF key == sKey THEN
+      CastSpell();
+    END;
+    DEFAULT
+      PhysicalAttack(key);
+  END;
+END;
+
+CastSpell()
+BEGIN
+END;
+
+PhysicalAttack(key)
+BEGIN
+  LOCAL attackFactor, damageFactor, damage, experienceFactor;
+  IF monsterStrength == 0 THEN
+    Message(110, {"YOUR SWORD AVAILS YOU NOUGHT HERE"});
+    ShowScores();
+    RETURN;
+  END;
+  stamina:=stamina-1;
+  IF stamina <= 0 THEN
+    Msgs({"YOU FATALLY EXHAUST YOURSELF"});
+    RETURN;
+  END;
+  attackFactor:=RANDOM * 10;
+  damageFactor:=0;
+  CASE
+    IF (key == hKey) AND ((attackFactor < 5) OR (strength > (monsterStrength * 4))) THEN
+      damageFactor:=2;
+    END;
+    IF (key == bKey) AND ((attackFactor < 7) OR (strength > (monsterStrength * 4))) THEN
+      damageFactor:=1;
+    END;
+    IF (key == lKey) AND ((attackFactor < 9) OR (strength > (monsterStrength * 4))) THEN
+      damageFactor:=0.3;
+    END;
+  END;
+  IF damageFactor == 0 THEN
+    Message(110, {"YOU MISSED IT !"});
+    hasAdvantage:=0;
+    ShowScores();
+    RETURN;
+  END;
+  IF hasAdvantage THEN
+    damage:=monsterStrength + IP(RANDOM * 9);
+    hasAdvantage:=0;
+  ELSE
+    experienceFactor:=39 * LOG(experience) / 3.14;
+    damage:=IP((((strength * 50 * RANDOM) - (10 * monsterStrength) + experienceFactor) / 100) * damageFactor);
+    IF damage < 0 THEN damage:=0; END;
+    IF strength > (monsterStrength - damage) * 4 THEN
+      hasAdvantage:=1;
+    END;
+  END;
+  monsterStrength:=monsterStrength - damage;
+  Msgs({"A HIT..."});
+  Delay(60);
+  IF damage == 0 THEN
+    Message(110, {"A HIT...BUT...NO DAMAGE"});
+    hasAdvantage:=0;
+    ShowScores();
+    RETURN;
+  END;
+  Msgs({"A HIT..."+damage+" DAMAGE"});
+  IF monsterStrength <= 0 THEN
+    Message(80, {"A HIT..."+damage+" DAMAGE", "...KILLING THE MONSTER..."});
+    experience:=experience+monsterExperience;
+    hasAdvantage:=0;
+    fighting:=0;
+    ShowScores();
+    RETURN;
+  END;
+  IF hasAdvantage THEN
+    Delay(30);
+    Msgs({"A HIT..."+damage+" DAMAGE", "THE "+monster(1)+" STAGGERS DEFEATED"});
+  END;
+  Delay(110);
+  ClrMsg();
+  ShowScores();
 END;
 
 PushScene()
@@ -971,7 +1106,7 @@ BEGIN
     key:=GETKEY;
   END;
   s:=TICKS;
-  WHILE (TICKS - s) < 500 DO
+  WHILE (TICKS - s) < 600 DO
     key:=GETKEY;
     IF key <> -1 THEN BREAK; END;
   END;
@@ -998,9 +1133,14 @@ END;
 
 Message(t, messages)
 BEGIN
-  MsgsAt(0, 21, messages);
+  Msgs(messages);
   Delay(t);
   ClrMsg();
+END;
+
+Msgs(messages)
+BEGIN
+  MsgsAt(0, 21, messages);
 END;
 
 MsgsAt(col, row, messages)
@@ -1055,6 +1195,6 @@ END;
 
 HandleSpecial(key)
 BEGIN
-  IF key == 4 THEN needPlayer:=1; END;
+  IF key == escKey THEN needPlayer:=1; END;
   RETURN 1;
 END;
