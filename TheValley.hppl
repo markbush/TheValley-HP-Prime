@@ -12,11 +12,11 @@ ShowRating(); ShowPlayerLoc(); ShowGame(); OnPath(); InLake();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove(); DelayWipeUpdate();
 IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
 IsEntry(); IsExit(); HandleStairs(); MaybeDie(); SpecialFind();
-UpdateTreasure(); FindSelect(); SelectMonster(); Fight();
-MonsterAttack(); Attack(); CastSpell(); PhysicalAttack();
-SleepIt(); PsiLance(); CrispIt();
+UpdateTreasure(); FindSelect(); SelectMonster(); Fight(); ExperienceFactor();
+MonsterAttack(); Attack(); CastSpell(); PhysicalAttack(); UseUpEnergy();
+SleepIt(); PsiLance(); CrispIt(); MonsterPsiAttack(); MonsterPhysicalAttack();
 NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
-CreateLair(); CreateTemple();
+CreateLair(); CreateTemple(); AddTreasure();
 SceneMap();
 
 LOCAL diaplayTheme:=0, playerExt:=".csv";
@@ -318,7 +318,9 @@ BEGIN
       IF (ans == dKey) AND (level > 2) THEN
         x:=playerX; y:=playerY;
         PopScene();
+        AddTreasure();
         playerX:=x; playerY:=y;
+        currentMap(playerY, playerX):=space;
         buildingType:=inTower;
         notMoved:=0;
       END;
@@ -487,9 +489,97 @@ BEGIN
   END;
 END;
 
+ExperienceFactor()
+BEGIN
+  RETURN 39 * LOG(experience) / 3.14;
+END;
+
 MonsterAttack()
 BEGIN
+  Message(80, {"THE CREATURE ATTACKS..."});
+  IF (monsterStrength == 0) OR ((monsterStrength < monsterPsi) AND (monsterPsi > 6) AND (RANDOM < 0.5)) THEN
+    MonsterPsiAttack();
+  ELSE
+    MonsterPhysicalAttack();
+  END;
+  IF (strength > 0) AND (stamina > 0) THEN
+    DelayWipeUpdate(100);
+  END;
+END;
 
+MonsterPsiAttack()
+BEGIN
+END;
+
+MonsterPhysicalAttack()
+BEGIN
+  LOCAL damageFactor, damageType, damage;
+  monsterStrength:=monsterStrength - 1;
+  IF monsterStrength <= 0 THEN
+    UseUpEnergy();
+    RETURN;
+  END;
+  damageFactor:=0;
+  damageType:=RANDINT(1, 10);
+  CASE
+    IF damageType == 1 THEN
+      Msgs({"IT SWINGS AT YOU...AND MISSES"});
+    END;
+    IF damageType == 2 THEN
+      Msgs({"YOUR BLADE DEFLECTS THE BLOW"});
+    END;
+    IF damageType == 3 THEN
+      Msgs({"...BUT HESITATES, UNSURE..."});
+    END;
+    IF damageType == 4 THEN
+      Msgs({"IT STRIKES YOUR HEAD !"});
+      damageFactor:=3;
+    END;
+    IF (damageType == 5) OR (damageType == 6) THEN
+      Msgs({"YOUR CHEST IS STRUCK !"});
+      damageFactor:=1.5;
+    END;
+    IF (damageType == 7) OR (damageType == 8) THEN
+      Msgs({"A STRIKE TO YOUR SWORDARM !"});
+      damageFactor:=1;
+    END;
+    IF damageType == 9 THEN
+      Msgs({"A BLOW TO YOUR BODY !"});
+      damageFactor:=1.3;
+    END;
+    IF damageType == 10 THEN
+      Msgs({"IT CATCHES YOUR LEGS !"});
+      damageFactor:=0.5;
+    END;
+  END;
+  IF damageFactor > 0 THEN
+    Delay(80);
+    ClrMsg();
+    damage:=IP((((monsterStrength * 75 * RANDOM) - (10 * strength) - ExperienceFactor()) / 100) * damageFactor);
+    CASE
+      IF damage < 0 THEN
+        Msgs({"...SAVED BY YOUR ARMOUR !  "});
+      END;
+      IF damage == 0 THEN
+        Msgs({"SHAKEN......BUT NO DAMAGE DONE"});
+      END;
+      IF damage > 0 THEN
+        stamina:=stamina - damage;
+        IF damage > 9 THEN
+          strength:=IP(strength - (damage / 6));
+        END;
+        Msgs({"YOU TAKE "+damage+" DAMAGE..."});
+      END;
+    END;
+  END;
+END;
+
+UseUpEnergy()
+BEGIN
+  Msgs({"...USING ITS LAST ENERGY IN THE ATTEMPT"});
+  experience:=IP(experience + monsterExperience/2);
+  fighting:=0;
+  DelayWipeUpdate(100);
 END;
 
 Attack()
@@ -590,8 +680,7 @@ END;
 
 PsiLance()
 BEGIN
-  LOCAL damageFactor, damage, experienceFactor;
-  experienceFactor:=39 * LOG(experience) / 3.14;
+  LOCAL damageFactor, damage;
   IF (monsterStrength > stamina) OR (psi < 49) OR (experience < 1000) THEN
     RETURN 4;
   END;
@@ -607,7 +696,7 @@ BEGIN
   IF (damageFactor < 0.4) AND (monsterPsi > 10) THEN
     RETURN 6;
   END;
-  damage:=IP((((strength * 50 * damageFactor) - 5 * (monsterStrength + monsterPsi) + experienceFactor) / 50) / 4);
+  damage:=IP((((strength * 50 * damageFactor) - 5 * (monsterStrength + monsterPsi) + ExperienceFactor()) / 50) / 4);
   IF damage <= 0 THEN RETURN 7; END;
   Msgs({"THE PSI-LANCE CAUSES "+(damage*2)+" DAMAGE"});
   monsterPsi:=monsterPsi - (3 * damage);
@@ -657,8 +746,7 @@ END;
 
 PhysicalAttack(key)
 BEGIN
-  LOCAL attackFactor, damageFactor, damage, experienceFactor;
-  experienceFactor:=39 * LOG(experience) / 3.14;
+  LOCAL attackFactor, damageFactor, damage;
   IF monsterStrength == 0 THEN
     Msgs({"YOUR SWORD AVAILS YOU NOUGHT HERE"});
     DelayWipeUpdate(110);
@@ -693,7 +781,7 @@ BEGIN
     damage:=monsterStrength + IP(RANDOM * 9);
     hasAdvantage:=0;
   ELSE
-    damage:=IP((((strength * 50 * RANDOM) - (10 * monsterStrength) + experienceFactor) / 100) * damageFactor);
+    damage:=IP((((strength * 50 * RANDOM) - (10 * monsterStrength) + ExperienceFactor()) / 100) * damageFactor);
     IF damage < 0 THEN damage:=0; END;
     IF strength > (monsterStrength - damage) * 4 THEN
       hasAdvantage:=1;
@@ -1010,7 +1098,7 @@ END;
 CreateBuilding()
 BEGIN
   LOCAL borderRow, innerRow, row, idx, wallsToDo:=1;
-  LOCAL offset, height, x, y, d, numSpecials, occupied;
+  LOCAL offset, height, y, d;
   LOCAL numOffsets:=SIZE(wallOffsets);
   currentMap:={};
   borderRow:={space, space};
@@ -1072,6 +1160,19 @@ BEGIN
       END;
     END;
     y:=y+height+1;
+  END;
+  AddTreasure();
+END;
+
+AddTreasure()
+BEGIN
+  LOCAL idx, numSpecials, occupied, x, y;
+  FOR x FROM 4 TO 22 DO
+    FOR y FROM 2 TO 14 DO
+      IF currentMap(y, x) == special THEN
+        currentMap(y, x):=space;
+      END;
+    END;
   END;
   IF (level >= 4) AND (RANDOM >= 0.3) THEN
     numSpecials:=RANDINT(3, 7);
@@ -1250,7 +1351,7 @@ BEGIN
     key:=GETKEY;
   END;
   s:=TICKS;
-  WHILE (TICKS - s) < 500 DO
+  WHILE (TICKS - s) < 800 DO
     key:=GETKEY;
     IF key <> -1 THEN BREAK; END;
   END;
