@@ -19,7 +19,7 @@ NewSceneFor(); CreateWood(); CreateSwamp(); CreateBuilding(); CreateTower();
 CreateLair(); CreateTemple(); AddTreasure();
 SceneMap();
 
-LOCAL diaplayTheme:=0, playerExt:=".csv";
+LOCAL diaplayTheme:=0, playerExt:=".plyr";
 LOCAL rating:=1;
 LOCAL playerX:=0, playerY:=0; enteredAt:=0;
 LOCAL currentItem:=-1, level:=1, inWoods:=0, buildingType:=0;
