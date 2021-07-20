@@ -170,7 +170,7 @@ BEGIN
   newY:=playerY+dir(2);
   newItem:=currentMap(newY, newX);
   turns:=turns+1;
-  IF IsBlocked(newItem) THEN turns:=turns-1; RETURN 0; END;
+  IF IsBlocked(newItem) THEN turns:=turns - 1; RETURN 0; END;
   IF newItem == castle THEN
     playerX:=newX;
     playerY:=newY;
@@ -178,7 +178,7 @@ BEGIN
   END;
   IF NotAllowed(newItem) THEN
     turns:=turns-1;
-    stamina:=stamina-10;
+    stamina:=stamina - 10;
     Message(100, {"YOU CANNOT ENTER THIS WAY..."});
     RETURN 0;
   END;
@@ -193,8 +193,8 @@ BEGIN
       PopScene();
       RETURN 0;
     ELSE
-      turns:=turns-1;
-      stamina:=stamina-10;
+      turns:=turns - 1;
+      stamina:=stamina - 10;
       Message(100, {"THE WAY IS BARRED"});
       RETURN 0;
     END;
@@ -206,7 +206,7 @@ BEGIN
     RETURN 0;
   END;
   IF newItem == lake THEN
-    stamina:=stamina-20;
+    stamina:=stamina - 20;
     IF stamina <= 0 THEN
       IF MaybeDie() THEN RETURN 1; END;
     END;
@@ -244,12 +244,12 @@ END;
 DirForMove(move)
 BEGIN
   LOCAL dx, dy;
-  IF move < 32 OR move == 35 OR move == 36 OR move == 40 OR move == 41 OR move > 44 THEN
+  IF (move < 32) OR (move == 35) OR (move == 36) OR (move == 40) OR (move == 41) OR (move > 44) THEN
     move:=38;
   END;
-  IF move > 39 THEN move:=move-2; END;
-  IF move > 34 THEN move:=move-2; END;
-  move:=move-32;
+  IF move > 39 THEN move:=move - 2; END;
+  IF move > 34 THEN move:=move - 2; END;
+  move:=move - 32;
   dx:=(move MOD 3) - 1;
   dy:=IP(move / 3) - 1;
   RETURN {dx, dy};
@@ -287,7 +287,7 @@ END;
 
 NotAllowed(newItem)
 BEGIN
-  IF currentItem == lake AND newItem == building THEN RETURN 1; END;
+  IF (currentItem == lake) AND (newItem == building) THEN RETURN 1; END;
   RETURN 0;
 END;
 
@@ -312,7 +312,7 @@ BEGIN
     CASE
       IF (ans == uKey) AND (level < 7) THEN
         PushScene();
-        CreateTower(level+1);
+        CreateTower(level + 1);
         notMoved:=0;
       END;
       IF (ans == dKey) AND (level > 2) THEN
@@ -391,8 +391,8 @@ UpdateTreasure()
 BEGIN
   LOCAL factor;
   factor:=amuletStones;
-  IF hasAmulet THEN factor:=factor+1; END;
-  IF hasHelm THEN factor:=factor+1; END;
+  IF hasAmulet THEN factor:=factor + 1; END;
+  IF hasHelm THEN factor:=factor + 1; END;
   treasure:=treasure + (100 * (factor + level));
 END;
 
@@ -403,8 +403,8 @@ BEGIN
   CASE
     IF find == 1 THEN
       Message(100, {"A CIRCLE OF EVIL...DEPART IN HASTE !"});
-      strength:=strength + IP((level+1)/2);
-      psi:=psi - IP((level+1)/2);
+      strength:=strength + IP((level + 1) / 2);
+      psi:=psi - IP((level + 1) / 2);
       stamina:=stamina - 20;
     END;
     IF find <= 3 THEN
@@ -509,6 +509,33 @@ END;
 
 MonsterPsiAttack()
 BEGIN
+  LOCAL damage;
+  Msgs({"...HURLING A LIGHTNING BOLT AT YOU !"});
+  damage:=IP(((180 * monsterPsi * RANDOM) - (psi + ExperienceFactor())) / 100);
+  monsterPsi:=monsterPsi - 5;
+  IF damage > 9 THEN
+    monsterPsi:=monsterPsi - IP(damage / 5);
+  END;
+  DelayWipeUpdate(80);
+  IF monsterPsi <= 0 THEN
+    UseUpEnergy();
+    RETURN;
+  END;
+  IF RANDOM < 0.25 THEN
+    Msgs({"...MISSED YOU !"});
+    RETURN;
+  END;
+  IF damage <= 0 THEN
+    Msgs({"YOUR PSI SHIELD PROTECTS YOU"});
+    RETURN;
+  END;
+  Msgs({"IT STRIKES HOME !"});
+  DelayWipeUpdate(100);
+  stamina:=stamina - damage;
+  IF damage > 9 THEN
+    psi:=psi - IP(damage / 4);
+    Msgs({"YOU TAKE "+STRING(damage)+" DAMAGE..."});
+  END;
 END;
 
 MonsterPhysicalAttack()
@@ -568,7 +595,7 @@ BEGIN
         IF damage > 9 THEN
           strength:=IP(strength - (damage / 6));
         END;
-        Msgs({"YOU TAKE "+damage+" DAMAGE..."});
+        Msgs({"YOU TAKE "+STRING(damage)+" DAMAGE..."});
       END;
     END;
   END;
@@ -577,7 +604,7 @@ END;
 UseUpEnergy()
 BEGIN
   Msgs({"...USING ITS LAST ENERGY IN THE ATTEMPT"});
-  experience:=IP(experience + monsterExperience/2);
+  experience:=IP(experience + (monsterExperience / 2));
   fighting:=0;
   DelayWipeUpdate(100);
 END;
@@ -698,13 +725,13 @@ BEGIN
   END;
   damage:=IP((((strength * 50 * damageFactor) - 5 * (monsterStrength + monsterPsi) + ExperienceFactor()) / 50) / 4);
   IF damage <= 0 THEN RETURN 7; END;
-  Msgs({"THE PSI-LANCE CAUSES "+(damage*2)+" DAMAGE"});
+  Msgs({"THE PSI-LANCE CAUSES "+STRING(damage*2)+" DAMAGE"});
   monsterPsi:=monsterPsi - (3 * damage);
   IF monsterPsi < 0 THEN monsterPsi:=0; END;
   monsterStrength:=monsterStrength - damage;
   IF monsterStrength < 0 THEN monsterStrength:=0; END;
   IF monsterStrength + monsterPsi > 0 THEN RETURN 2; END;
-  Msgs({"THE PSI-LANCE CAUSES "+(damage*2)+" DAMAGE", "...KILLING THE CREATURE"});
+  Msgs({"THE PSI-LANCE CAUSES "+STRING(damage*2)+" DAMAGE", "...KILLING THE CREATURE"});
   experience:=experience + monsterExperience;
   RETURN 1;
 END;
@@ -734,9 +761,9 @@ BEGIN
       monsterPsi:=IP(monsterPsi - (damage / 3));
     END;
   END;
-  Msgs({"IT STRIKES HOME CAUSING "+damage+" DAMAGE !"});
+  Msgs({"IT STRIKES HOME CAUSING "+STRING(damage)+" DAMAGE !"});
   IF (monsterStrength + monsterPsi) <= 0 THEN
-    Msgs({"IT STRIKES HOME CAUSING "+damage+" DAMAGE !", "THE BEAST DIES SCREAMING !"});
+    Msgs({"IT STRIKES HOME CAUSING "+STRING(damage)+" DAMAGE !", "THE BEAST DIES SCREAMING !"});
     experience:=experience + monsterExperience;
     RETURN 1;
   END;
@@ -796,9 +823,9 @@ BEGIN
     DelayWipeUpdate(110);
     RETURN;
   END;
-  Msgs({"A HIT..."+damage+" DAMAGE"});
+  Msgs({"A HIT..."+STRING(damage)+" DAMAGE"});
   IF monsterStrength <= 0 THEN
-    Msgs({"A HIT..."+damage+" DAMAGE", "...KILLING THE MONSTER..."});
+    Msgs({"A HIT..."+STRING(damage)+" DAMAGE", "...KILLING THE MONSTER..."});
     experience:=experience + monsterExperience;
     hasAdvantage:=0;
     fighting:=0;
@@ -807,7 +834,7 @@ BEGIN
   END;
   IF hasAdvantage THEN
     Delay(30);
-    Msgs({"A HIT..."+damage+" DAMAGE", "THE "+monster(1)+" STAGGERS DEFEATED"});
+    Msgs({"A HIT..."+STRING(damage)+" DAMAGE", "THE "+monster(1)+" STAGGERS DEFEATED"});
   END;
   DelayWipeUpdate(110);
 END;
@@ -847,7 +874,7 @@ BEGIN
       extPos:=INSTRING(name, playerExt);
       IF extPos > 1 THEN
         options(option):=LEFT(name, extPos-1);
-        option:=option+1;
+        option:=option + 1;
       END;
     END;
   END;
@@ -894,13 +921,13 @@ BEGIN
       key:=GETKEY;
       CONTINUE;
     END;
-    IF key < 14 OR key == 19 OR key == 36 OR key == 41 OR key > 43 THEN key:=GETKEY; CONTINUE; END;
-    IF key >= 42 THEN key:=key-1; END;
-    IF key >= 37 THEN key:=key-1; END;
-    IF key >= 31 THEN key:=key-1; END;
-    IF key >= 20 THEN key:=key-1; END;
-    key:=key+51;
-    name:=name+CHAR(key);
+    IF (key < 14) OR (key == 19) OR (key == 36) OR (key == 41) OR (key > 43) THEN key:=GETKEY; CONTINUE; END;
+    IF key >= 42 THEN key:=key - 1; END;
+    IF key >= 37 THEN key:=key - 1; END;
+    IF key >= 31 THEN key:=key - 1; END;
+    IF key >= 20 THEN key:=key - 1; END;
+    key:=key + 51;
+    name:=name + CHAR(key);
     MsgAt(18, 1, name);
     key:=GETKEY;
   END;
@@ -1211,7 +1238,7 @@ BEGIN
   currentMap(playerY, playerX):=space;
   MapText(25, 4, "THE BLACK TOWER");
   MapText(28, 5, "OF ZAEXON");
-  MapText(29, 6, "FLOOR "+level);
+  MapText(29, 6, "FLOOR "+STRING(level));
 END;
 
 SceneMap(fill)
@@ -1315,7 +1342,7 @@ BEGIN
   ClrAt(0, 19, 40, 1);
   IF fighting THEN
     MsgAt(0, 19, monster(1));
-    MsgAt(21, 19, "M STR = "+monsterStrength+" "+monsterPsi);
+    MsgAt(21, 19, "M STR = "+STRING(monsterStrength)+" "+STRING(monsterPsi));
   END;
 END;
 
@@ -1328,7 +1355,7 @@ BEGIN
     idx:=idx+1;
   END;
   IF hasAmulet THEN
-    messages(idx):="AMULET STONES... "+amuletStones;
+    messages(idx):="AMULET STONES... "+STRING(amuletStones);
     idx:=idx+1;
   END;
   Message(250, messages);
