@@ -351,7 +351,7 @@ BEGIN
     Message(150, {"ALARIAN'S AMULET PROTECTS THY SOUL", "  LIVE AGAIN  "});
     RETURN 0;
   ELSE
-    Message(300, {"         OH WHAT A FRAIL SHELL", "          IS THIS THAT WE CALL MAN"});
+    Message(500, {"         OH WHAT A FRAIL SHELL", "          IS THIS THAT WE CALL MAN"});
     RETURN 1;
   END;
 END;
@@ -539,8 +539,8 @@ BEGIN
   stamina:=stamina - damage;
   IF damage > 9 THEN
     psi:=psi - IP(damage / 4);
-    Msgs({"YOU TAKE "+STRING(damage)+" DAMAGE..."});
   END;
+  Msgs({"YOU TAKE "+STRING(damage)+" DAMAGE..."});
 END;
 
 MonsterPhysicalAttack()
