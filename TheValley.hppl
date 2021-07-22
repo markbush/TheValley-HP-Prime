@@ -231,7 +231,7 @@ BEGIN
   CASE
     IF randomFind < 0.33 THEN
       SelectMonster();
-      //Fight();
+      Fight();
       IF (strength <= 0) OR (stamina <= 0) THEN
         IF MaybeDie() THEN RETURN 1; END;
       END;
