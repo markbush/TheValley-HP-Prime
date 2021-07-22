@@ -7,10 +7,10 @@ LoadGfx(); ClrScrn(); ClrMap(); ClrMsg(); ClrAt();
 SetupValley(); SetupPlayer(); SavePlayer(); LoadPlayer(); NewPlayer();
 InitPlayer(); ReadName(); ReadType(); GetChar(); CombatGet(); GetAns();
 Play(); PlayLoop(); Message(); Msgs(); MsgsAt(); MsgAt(); MapText();
-ShowPlayer(); ShowLabels(); ShowScores(); ShowMap();
+ShowPlayer(); ShowLabels(); ShowScores(); ShowMap(); Poke();
 ShowRating(); ShowPlayerLoc(); ShowGame(); OnPath(); InLake();
 Delay(); HandleSpecial(); PlayerMove(); DirForMove(); DelayWipeUpdate();
-IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene();
+IsBlocked(); WillQuit(); NotAllowed(); PushScene(); PopScene(); InvertScreen();
 IsEntry(); IsExit(); HandleStairs(); MaybeDie(); SpecialFind();
 UpdateTreasure(); FindSelect(); SelectMonster(); Fight(); ExperienceFactor();
 MonsterAttack(); Attack(); CastSpell(); PhysicalAttack(); UseUpEnergy();
@@ -28,9 +28,9 @@ LOCAL treasure:=0, experience:=5, turns:=0;
 LOCAL strength:=26, psi:=24, stamina:=150;
 LOCAL hasAmulet:=0, amuletStones:=0, hasHelm:=0;
 LOCAL space:=32;
-LOCAL vBorder:=97, castle:=98, pathUp:=99, pathDown:=100, wood:=101, tree:=102;
-LOCAL swamp:=103, tower:=104, player:=105, wall:=106, building:=107, stairs:=108;
-LOCAL door:=109, sBorder:=110, lake:=111, playerLake:=112, special:=42, tuft:=45;
+LOCAL vBorder:=214, castle:=219, pathUp:=78, pathDown:=77, wood:=216, tree:=88;
+LOCAL swamp:=173, tower:=87, player:=81, wall:=160, building:=230, stairs:=102;
+LOCAL door:=104, sBorder:=96, lake:=224, playerLake:=209, special:=42, tuft:=45;
 LOCAL currentMap:={}; scenes:={};
 LOCAL needGfx:=1, needPlayer:=1, playerType:=6, playerName:="NOBODY";
 LOCAL psiGain:=0.5, physicalGain:=1.25, maxStamina:=50, maxStrength:=50, maxPsi:=50;
@@ -77,7 +77,7 @@ LOCAL monster:={}, monsterOptions:="VAEGH", fireGiant:=10, balrog:=17, ringWrait
 LOCAL monsterStrength:=0, monsterPsi:=0, monsterExperience:=0, fighting:=0;
 LOCAL hasAdvantage;
 LOCAL wallOffsets:={4,7,3,6,4,4,6,5,3,6,0,3,8,4,3,5,5,3,8,3,4,5,0,6,3,6,4,6,4,7,4,3};
-LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50;
+LOCAL deleteKey:=19, enterKey:=30, ratingKey:=50; invertKey:=45;
 LOCAL escKey:=5, aKey:=14, bKey:=15, dKey:=17, hKey:=22, lKey:=26, nKey:=28;
 LOCAL rKey:=33, sKey:=34, uKey:=37, yKey:=42, oneKey:=42, twoKey:=43, threeKey:=44;
 LOCAL availableSpells:={oneKey, twoKey, threeKey};
@@ -165,6 +165,11 @@ BEGIN
     stamina:=stamina-10;
     RETURN 0;
   END;
+  IF move == invertKey THEN
+    InvertScreen();
+    stamina:=stamina-10;
+    RETURN 0;
+  END;
   dir:=DirForMove(move);
   newX:=playerX+dir(1);
   newY:=playerY+dir(2);
@@ -226,7 +231,7 @@ BEGIN
   CASE
     IF randomFind < 0.33 THEN
       SelectMonster();
-      Fight();
+      //Fight();
       IF (strength <= 0) OR (stamina <= 0) THEN
         IF MaybeDie() THEN RETURN 1; END;
       END;
@@ -1282,11 +1287,18 @@ END;
 
 LoadGfx()
 BEGIN
-  G1:=AFiles("Charset.png");
+  G1:=AFiles("PETSCII.png");
   needGfx:=0;
   IF diaplayTheme == 1 THEN
     INVERT_P(G1);
   END;
+END;
+
+InvertScreen()
+BEGIN
+  diaplayTheme:=1 - diaplayTheme;
+  INVERT_P(G0);
+  INVERT_P(G1);
 END;
 
 ShowGame()
@@ -1304,15 +1316,20 @@ END;
 ShowPlayerLoc()
 BEGIN
   IF InLake() THEN
-    MsgAt(playerX-1, playerY-1, {playerLake});
+    Poke(playerX, playerY, playerLake);
   ELSE
-    MsgAt(playerX-1, playerY-1, {player});
+    Poke(playerX, playerY, player);
   END;
 END;
 
 ShowMap()
 BEGIN
-  MsgsAt(0, 0, currentMap);
+  LOCAL col, row;
+  FOR row FROM 1 TO SIZE(currentMap) DO
+    FOR col FROM 1 TO SIZE(currentMap(1)) DO
+      Poke(col, row, currentMap(row, col));
+    END;
+  END;
 END;
 
 ShowLabels()
@@ -1399,6 +1416,14 @@ BEGIN
   LOCAL idx, char;
   FOR idx FROM 1 TO SIZE(message) DO
     char:=message(idx);
+    CASE
+      IF (char >= 64) AND (char <= 95) THEN
+        char:=char - 64;
+      END;
+      IF (char >= 96) AND (char <= 127) THEN
+        char:=char + 160;
+      END;
+    END;
     currentMap(row-1, col+idx-1):=char;
   END;
 END;
@@ -1426,13 +1451,33 @@ END;
 
 MsgAt(col, row, message)
 BEGIN
-  LOCAL idx, char, x, y;
+  LOCAL idx, char, x, y, cx, cy;
   y:=row*8;
   FOR idx FROM 1 TO SIZE(message) DO
-    char:=(message(idx)-32)*8;
+    char:=message(idx);
+    CASE
+      IF (char >= 64) AND (char <= 95) THEN
+        char:=char - 64;
+      END;
+      IF (char >= 96) AND (char <= 127) THEN
+        char:=char + 160;
+      END;
+    END;
     x:=(col+idx-1)*8;
-    BLIT_P(G0, x, y, x+8, y+8, G1, char, 0, char+8, 8);
+    cx:=(char MOD 16) * 8;
+    cy:=IP(char / 16) * 8;
+    BLIT_P(G0, x, y, x+8, y+8, G1, cx, cy, cx+8, cy+8);
   END;
+END;
+
+Poke(col, row, code)
+BEGIN
+  LOCAL x, y, cx, cy;
+  x:=(col-1)*8;
+  y:=(row-1)*8;
+  cx:=(code MOD 16) * 8;
+  cy:=IP(code / 16) * 8;
+  BLIT_P(G0, x, y, x+8, y+8, G1, cx, cy, cx+8, cy+8);
 END;
 
 ClrScrn()
