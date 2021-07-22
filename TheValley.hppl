@@ -916,6 +916,7 @@ BEGIN
   key:=GETKEY;
   WHILE key <> enterKey OR SIZE(name) == 0 DO
     IF key == -1 THEN Delay(10); key:=GETKEY; CONTINUE; END;
+    IF key == invertKey THEN InvertScreen(); key:=GETKEY; CONTINUE; END;
     IF key == deleteKey AND SIZE(name) > 0 THEN
       IF SIZE(name) == 1 THEN
         name:="";
@@ -945,6 +946,7 @@ BEGIN
   WHILE key == -1 DO
     Delay(10);
     key:=GETKEY;
+    IF key == invertKey THEN InvertScreen(); key:=-1; END;
   END;
   IF key == 42 THEN RETURN 1; END;
   IF key == 43 THEN RETURN 2; END;
