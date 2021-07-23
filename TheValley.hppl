@@ -21,6 +21,7 @@ SceneMap();
 
 LOCAL diaplayTheme:=0, playerExt:=".plyr";
 LOCAL rating:=1;
+LOCAL castleX, castleY;
 LOCAL playerX:=0, playerY:=0; enteredAt:=0;
 LOCAL currentItem:=-1, level:=1, inWoods:=0, buildingType:=0;
 LOCAL inLair:=1, inTemple:=2, inTower:=3;
@@ -349,6 +350,11 @@ BEGIN
     hasAmulet:=0;
     amuletStones:=0;
     Message(150, {"ALARIAN'S AMULET PROTECTS THY SOUL", "  LIVE AGAIN  "});
+    WHILE SIZE(scenes) > 0 DO
+      PopScene();
+    END;
+    playerX:=castleX;
+    playerY:=castleY;
     RETURN 0;
   ELSE
     Message(500, {"         OH WHAT A FRAIL SHELL", "          IS THIS THAT WE CALL MAN"});
@@ -1022,7 +1028,8 @@ BEGIN
   END;
   currentMap(15):=bottomRow;
   x:=2; y:=RANDINT(3, 12);
-  playerX:=2; playerY:= y;
+  playerX:=x; playerY:= y;
+  castleX:=x; castleY:=y;
   currentMap(y, x):=castle;
   prev:=castle;
   FOR x FROM 3 TO 38 DO
