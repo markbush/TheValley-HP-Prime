@@ -1,5 +1,3 @@
-# The Valley
-
 ![The Valley Logo](images/the_valley.png)
 
 This is a port of "The Valley" game to the HP Prime calculator.  It was developed and tested on a "G2" model and I cannot guarantee that it will run correctly on an earlier version.
