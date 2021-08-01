@@ -1,6 +1,6 @@
 ## Installing and Upgrading The Valley
 
-The application has been packaged into a [ZIP file](TheValley-HPP.zip) which you should download and unpack.  Move the unpacked `The Valley.hpappdir` folder into the `Content` folder in your installation of the HP Connectivity Kit.
+The application has been packaged into a [ZIP file](https://github.com/markbush/TheValley-HP-Prime/blob/main/TheValley-HPP.zip?raw=true) which you should download and unpack.  Move the unpacked `The Valley.hpappdir` folder into the `Content` folder in your installation of the HP Connectivity Kit.
 
 If you have downloaded this entire repository, then you will find that the ZIP file is already unpacked.
 
