@@ -436,11 +436,11 @@ END;
 
 SelectMonster()
 BEGIN
-  LOCAL monsterSelected:=0, monsterNum;
+  LOCAL numMonsters:=SIZE(monsterTypes), monsterSelected:=0, monsterNum;
   WHILE NOT monsterSelected DO
-    monsterNum:=RANDINT(1, 17);
+    monsterNum:=RANDINT(1, numMonsters-2);
     IF (monsterNum > fireGiant) AND (RANDOM > 0.85) THEN CONTINUE; END;
-    IF InLake() THEN monsterNum:=RANDINT(18, 19); END;
+    IF InLake() THEN monsterNum:=RANDINT(numMonsters-1, numMonsters); END;
     IF (monsterNum == balrog) AND (RANDOM < 0.7) THEN CONTINUE; END;
     IF (level < 5) AND (monsterNum == ringWraith) THEN CONTINUE; END;
     IF INSTRING(monsterOptions, monsterTypes(monsterNum, 2)) THEN
@@ -959,7 +959,7 @@ BEGIN
   IF key == 44 THEN RETURN 3; END;
   IF key == 37 THEN RETURN 4; END;
   IF key == 38 THEN RETURN 5; END;
-  RETURN 6;
+  RETURN SIZE(playerTypes);
 END;
 
 SavePlayer()
