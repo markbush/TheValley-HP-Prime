@@ -11,3 +11,21 @@ Here you will find:
 * [Installation/upgrade](INSTALL.md) instructions.
 * How to [play](PLAY.md) the game.
 * An [explanation](CODE.md) of how the parts of the program work with hints at how it could be extended.
+
+## Sample Screenshots
+
+### Choose your Character Wisely
+
+![Choose Character](images/choose-character.png)
+
+### Safe in The Castle
+
+![The Valley](images/the-valley.png)
+
+### Entering The Black Tower
+
+![The Black Tower](images/tower.png)
+
+### Dying in the Swamp
+
+![Death in the Swamp](images/death.png)
