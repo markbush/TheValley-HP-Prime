@@ -358,6 +358,7 @@ BEGIN
     RETURN 0;
   ELSE
     Message(500, {"         OH WHAT A FRAIL SHELL", "          IS THIS THAT WE CALL MAN"});
+    needPlayer:=1;
     RETURN 1;
   END;
 END;
